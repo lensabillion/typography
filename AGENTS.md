@@ -1,0 +1,16 @@
+# Project conventions
+
+- Use `uv` for every Python invocation and dependency operation. Run commands through
+  `uv run --locked`; change dependencies with uv and keep `uv.lock` current.
+- Use Sol agents for bounded mechanical implementation and Astra for difficult
+  design decisions or independent review, as requested by the project owner.
+- Give a substantive progress update after every 2–3 tool calls and at milestones.
+- Keep original handwriting photos private and local under `assets/source/`; never
+  include them in Git, Python distributions, font bundles, or website assets.
+- Do not invent missing handwritten characters or silently substitute another font's
+  outlines. Document actual coverage and preserve web fallback fonts.
+- Validate TTF/WOFF2, run tests and lint, inspect the rendered specimen, and test a
+  consuming application after changing outlines or metrics. Do not call a font
+  typographically finished solely because automated checks pass.
+- `integrations/personal-website` is a separate repository with its own instructions.
+  Keep its changes separate from this Python project's artifacts.
