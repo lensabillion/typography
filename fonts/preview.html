@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Lensa Hand — font tester</title>
+<style>
+@font-face { font-family: Hand; src: url('LensaHand-Regular.woff2') format('woff2'); }
+* { box-sizing: border-box; }
+body { margin: 0; background: #f8f4eb; color: #302e29; font: 16px system-ui; padding: 6vw; max-width: 1200px; }
+h1 { font-size: 20px; font-weight: 500; }
+p { color: #70675c; line-height: 1.6; }
+textarea { display: block; width: 100%; min-height: 360px; border: 1px solid #d8cfbe; border-radius: 8px; padding: 32px; background: #fffcf5; color: #302e29; font: 48px/1.6 Hand; resize: vertical; margin: 26px 0; }
+label { display: flex; gap: 18px; align-items: center; }
+a { color: inherit; }
+section { font: 40px/1.8 Hand; overflow-wrap: anywhere; margin-top: 45px; }
+small { font: 14px system-ui; color: #70675c; }
+</style>
+<h1>LENSA HAND · DRAFT</h1>
+<p>Type below to try the traced handwriting.</p>
+<label>Text size <input id="size" type="range" min="24" max="96" value="48"><output id="value">48 px</output></label>
+<textarea id="text" spellcheck="false" aria-label="Try your handwriting font">A little bit of my handwriting.
+The quick brown fox jumps over the lazy dog.</textarea>
+<a href="LensaHand-Regular.ttf" download>Download the font (.ttf)</a>
+<section>abcdefghijklmnopqrstuvwxyz<br>ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>0123456789<br>.,!?;:'“”()-&amp;@</section>
+<p><small>This draft uses one shape per character. Natural cursive joins, Ethiopic, and accented letters are not included.</small></p>
+<script>document.querySelector('#size').oninput=e=>{document.querySelector('#text').style.fontSize=e.target.value+'px';document.querySelector('#value').textContent=e.target.value+' px'}</script>
+</html>

@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "family": "Lensa Hand",
+  "source_image": "alphabet.jpg",
+  "source_sha256": "ea08c13e72cf6523b7210074d21a153f0ecb23708f9518f0826ad1673b99752a",
+  "source_dimensions": [
+    1928,
+    2560
+  ],
+  "manifest_sha256": "2176c6337c67e074807e69d8ad7a6a80163603aa5590454f33ca8de69d021097",
+  "traced_glyphs": 76
+}
