@@ -27,7 +27,7 @@ jobs:
       - run: uv sync --locked
       - run: uv run --locked ruff check src tests scripts
       - run: uv run --locked ruff format --check src tests scripts
-      - run: uv run --locked pytest --cov=lensa_hand --cov-report=term-missing
+      - run: uv run --locked pytest --cov=handfont --cov-report=term-missing
       - run: uv build --no-sources
   audit:
     # Validates the shipped fonts/ files and runs the independent FontBakery
@@ -43,8 +43,8 @@ jobs:
           version: '0.12.8'
           enable-cache: true
       - run: uv sync --locked --group audit
-      - run: uv run --locked lensa-hand validate fonts/LensaHand-Regular.ttf --manifest config/alphabet.json
-      - run: uv run --locked lensa-hand validate fonts/LensaHand-Regular.woff2 --manifest config/alphabet.json
+      - run: uv run --locked handfont validate fonts/LensaHand-Regular.ttf --manifest config/alphabet.json
+      - run: uv run --locked handfont validate fonts/LensaHand-Regular.woff2 --manifest config/alphabet.json
       - run: >-
           uv run --locked --group audit fontbakery check-universal
           fonts/LensaHand-Regular.ttf --skip-network --error-code-on FAIL

@@ -15,3 +15,5 @@ output/
 assets/source/*
 !assets/source/README.md
 integrations/
+# Default output of `handfont template`; print it, do not commit it.
+template/

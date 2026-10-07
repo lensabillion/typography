@@ -11,10 +11,10 @@ from fontTools.pens.areaPen import AreaPen
 from fontTools.pens.recordingPen import RecordingPen
 from fontTools.ttLib import TTFont
 
-from lensa_hand.font import build_font, font_version
-from lensa_hand.manifest import load_manifest
-from lensa_hand.pipeline import build_project, validate_font
-from lensa_hand.tracing import trace_glyphs
+from handfont.font import build_font
+from handfont.manifest import load_manifest
+from handfont.pipeline import build_project, validate_font
+from handfont.tracing import trace_glyphs
 
 
 def contour_areas(font: TTFont, glyph_name: str) -> list[float]:
@@ -41,7 +41,7 @@ def test_trace_preserves_counter_and_separate_dot(specimen: tuple[Path, Path]) -
 
 def test_build_round_trip_and_repeatability(specimen: tuple[Path, Path], tmp_path: Path) -> None:
     image_path, manifest_path = specimen
-    result = build_project(image_path, manifest_path, tmp_path / "output")
+    result = build_project(image_path, manifest_path, tmp_path / "output", "Lensa Hand")
     assert result.glyph_count == 2
     assert all(
         path.is_file()
@@ -86,12 +86,11 @@ def test_build_round_trip_and_repeatability(specimen: tuple[Path, Path], tmp_pat
         assert ttf["gasp"].gaspRange == {7: 10, 0xFFFF: 15}
         assert ttf["OS/2"].panose.bFamilyType == 3
         assert (ttf["OS/2"].sxHeight, ttf["OS/2"].sCapHeight) == (430, 650)
-        major, minor = font_version()
-        assert ttf["name"].getDebugName(5) == f"Version {major}.{minor}00"
-        assert round(ttf["head"].fontRevision, 3) == float(f"{major}.{minor}")
+        assert ttf["name"].getDebugName(5) == "Version 1.000"
+        assert round(ttf["head"].fontRevision, 3) == 1.0
     first_ttf = result.ttf.read_bytes()
     first_zip = result.archive.read_bytes()
-    build_project(image_path, manifest_path, tmp_path / "output")
+    build_project(image_path, manifest_path, tmp_path / "output", "Lensa Hand")
     assert result.ttf.read_bytes() == first_ttf
     assert result.archive.read_bytes() == first_zip
 
@@ -104,7 +103,7 @@ def test_manifest_metrics_control_spacing(specimen: tuple[Path, Path], tmp_path:
     spaced = tmp_path / "spaced.json"
     spaced.write_text(json.dumps(data), encoding="utf-8")
     manifest = load_manifest(spaced)
-    ttf, _ = build_font(manifest, trace_glyphs(image_path, manifest), tmp_path / "spaced")
+    ttf, _ = build_font(manifest, trace_glyphs(image_path, manifest), tmp_path / "spaced", "Spaced")
     with TTFont(ttf) as font:
         hmtx, glyf = font["hmtx"], font["glyf"]
         assert tuple(hmtx["space"]) == (250, 0)
@@ -117,7 +116,7 @@ def test_manifest_metrics_control_spacing(specimen: tuple[Path, Path], tmp_path:
 def test_validate_font_rejects_corrupted_fonts(specimen: tuple[Path, Path], tmp_path: Path) -> None:
     image_path, manifest_path = specimen
     manifest = load_manifest(manifest_path)
-    ttf, _ = build_font(manifest, trace_glyphs(image_path, manifest), tmp_path / "good")
+    ttf, _ = build_font(manifest, trace_glyphs(image_path, manifest), tmp_path / "good", "Good")
 
     def tampered(label: str, mutate) -> Path:
         with TTFont(ttf, recalcTimestamp=False) as font:
@@ -181,3 +180,17 @@ def test_bad_manifest_fails_early(tmp_path: Path) -> None:
     path.write_text('{"coordinate_width":1373,"glyphs":[]}', encoding="utf-8")
     with pytest.raises(ValueError, match="non-empty"):
         load_manifest(path)
+
+
+def test_manifest_version_sets_font_revision(specimen: tuple[Path, Path], tmp_path: Path) -> None:
+    image_path, manifest_path = specimen
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["version"] = "2.15"
+    versioned = tmp_path / "versioned.json"
+    versioned.write_text(json.dumps(data), encoding="utf-8")
+    manifest = load_manifest(versioned)
+    ttf, _ = build_font(manifest, trace_glyphs(image_path, manifest), tmp_path / "v", "Versioned")
+    with TTFont(ttf) as font:
+        assert font["name"].getDebugName(5) == "Version 2.150"
+        assert font["name"].getDebugName(3) == "Versioned-Regular-2.15"
+        assert round(font["head"].fontRevision, 3) == 2.15

@@ -10,9 +10,8 @@ from pathlib import Path
 import pytest
 from fontTools.ttLib import TTFont
 
-from lensa_hand.font import font_version
-from lensa_hand.manifest import load_manifest
-from lensa_hand.pipeline import validate_font
+from handfont.manifest import load_manifest
+from handfont.pipeline import validate_font
 
 ROOT = Path(__file__).resolve().parent.parent
 FONTS = ROOT / "fonts"
@@ -59,8 +58,8 @@ def test_shipped_web_assets_reference_shipped_files() -> None:
     assert WOFF2.name in tester and TTF.name in tester
 
 
-def test_shipped_font_version_matches_package() -> None:
-    major, minor = font_version()
+def test_shipped_font_version_matches_manifest() -> None:
+    version_name, revision = load_manifest(MANIFEST).revision()
     with TTFont(TTF) as font:
-        assert font["name"].getDebugName(5) == f"Version {major}.{minor}00"
-        assert round(font["head"].fontRevision, 3) == float(f"{major}.{minor}")
+        assert font["name"].getDebugName(5) == version_name
+        assert round(font["head"].fontRevision, 3) == revision

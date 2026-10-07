@@ -1,40 +1,84 @@
-# Lensa Hand
+# handfont
 
-Your handwriting as an installable TrueType font and a self-hosted WOFF2 web font.
-The source package traces the original alphabet photograph, builds previews, and
-validates the generated files. It runs locally; photographs are never sent to a service.
+Turn a photo of your handwriting into an installable TrueType font and a self-hosted
+WOFF2 web font. Print a template, write one character per box, photograph the sheet,
+build. Everything runs locally; photographs are never sent to a service.
 
-## Ready-to-use font
+**Lensa Hand**, the first typeface made with it, ships ready to use in [`fonts/`](fonts/).
+See [the quality record](docs/QUALITY.md) for its verification results and limitations.
 
-The `fonts/` directory contains the validated 0.3 TTF, WOFF2, CSS and specimen.
-Use those directly without rebuilding. See [the quality record](docs/QUALITY.md)
-for verification results and known design limitations.
+## Make a font from your handwriting
 
-## Setup and build
-
-Install [uv](https://docs.astral.sh/uv/getting-started/installation/), then run from this directory:
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then, without
+cloning anything:
 
 ```sh
-uv sync --locked
-uv run --locked lensa-hand build --source assets/source/alphabet.jpg
-uv run --locked lensa-hand validate output/LensaHand-Regular.ttf --manifest config/alphabet.json
+uvx --from git+https://github.com/lensabillion/typography handfont template
 ```
 
-Python is pinned to **3.14.7** in `.python-version`. `uv` manages the environment;
-there is no manual activation, `pip install`, or direct `.venv/bin/python` workflow.
-`pyproject.toml` declares dependencies and `uv.lock` pins the complete dependency graph.
-In a sandbox that cannot write the normal uv cache, set `UV_CACHE_DIR` to a writable directory.
+That writes `template/template.pdf`, one A4 page that also fits US Letter, plus a PNG
+copy. Print it at any scale. Write one character in each box with a black pen: rest
+letters on the long tick and let small letters reach the short tick. Photograph the whole
+sheet flat, in even light, with all four corner squares in view. Then:
 
-The supplied photograph has been copied to `assets/source/alphabet.jpg` on this computer.
-It is intentionally excluded from Git, Python distributions and font bundles. On another
-computer, provide your copy of the same photograph, or supply a new crop manifest.
+```sh
+uvx --from git+https://github.com/lensabillion/typography handfont build --photo IMG_0001.jpg --family "Ada Hand"
+```
 
-## Use in your projects
+`output/` now holds `AdaHand-Regular.ttf` for desktop installation, `AdaHand-Regular.woff2`
+with `fonts.css` for the web, PNG specimens, an interactive `preview.html` tester and a
+ZIP of all of them. The build finds the corner markers, straightens the photo, cuts out
+every box, measures each character against the printed baseline and x-height, builds the
+font and validates it. Boxes left empty are skipped and listed. A photo taken at an
+angle, upside down or printed on a different paper size is fine; resolution matters more,
+so fill the frame with the sheet.
 
-For desktop apps, open `output/LensaHand-Regular.ttf` and install it with your operating
-system's font manager. Choose **Lensa Hand / Regular** in your application.
+Inside a clone of this repository the same commands are `uv run --locked handfont ...`.
+Photos may be JPEG, PNG or HEIC, the format iPhones use.
 
-For a website, copy `LensaHand-Regular.woff2` into your public font directory:
+### No printer? Write on any paper
+
+`handfont template` also prints the rows to copy. Write them on any paper, blank or
+ruled, one row per line with nine characters each, exactly in the order listed, leaving
+clear gaps between characters and between rows. Photograph the page and run the same
+`build` command. Without corner markers, handfont straightens the photo from the rows
+themselves, paints out ruled lines, joins the parts of characters such as i, %, = and
+the double quote, and writes `layout-check.png` showing which mark became which
+character. Look at that image before trusting the font. If a row holds the wrong number
+of characters the build stops, says which row, and numbers the marks it found in the
+same image.
+
+### Refining a letter
+
+Two more files appear in `output/`: `sheet.png`, the straightened photograph, and
+`manifest.json`, the crop map derived from it, listing each character's box, height and
+baseline offset. Edit the map, for example to nudge one baseline or exclude a stray mark,
+and rebuild from it:
+
+```sh
+uv run --locked handfont build --photo output/sheet.png --manifest output/manifest.json --family "Ada Hand"
+```
+
+With `uvx`, prefix the command the same way as above.
+
+Spacing lives in the same file. `metrics.sidebearing` sets the space on each side of every
+glyph (default 55 font units) and `metrics.word_space` the width of a space (default 320).
+Any glyph may override its own `left` and `right`. The `version` field becomes the font's
+version string. Pair kerning is not generated.
+
+### Other character sets
+
+The default sheet holds the 94 printable ASCII characters. Pass `--characters` with any
+set, in writing order, to both commands; curly quotes and dashes map onto the plain forms
+automatically. Sets with more than 99 characters span several pages. Photograph each page
+and pass every photo with `--photo`, in any order: the corner markers identify the page.
+
+## Use the font in your projects
+
+For desktop apps, open the `.ttf` and install it with your operating system's font
+manager, then choose the family in your application.
+
+For a website, copy the `.woff2` into your public font directory:
 
 ```css
 @font-face {
@@ -56,72 +100,75 @@ code, pre, kbd, samp {
 }
 ```
 
-Next.js projects can use `next/font/local` to self-host and preload this file. This
-repository's `integrations/personal-website` checkout exercises that integration.
-That is a separate Git repository and is excluded from the font project's packages.
+Next.js projects can use `next/font/local` to self-host and preload the file. This
+repository's `integrations/personal-website` checkout exercises that integration; it is a
+separate Git repository and is excluded from this project's packages.
+
+Every font has one **regular** face. Bold and italic are not separately drawn; browsers
+may synthesize them. Keep a fallback font for unsupported characters, and start at 20px or
+larger for extended reading.
 
 ### Updating a project that already uses the font
 
 Projects keep their own copy of the font file; nothing updates automatically. To move a
-project to a new release, copy the new `fonts/LensaHand-Regular.woff2` (or the TTF) over
-its old copy, rebuild and redeploy. Next.js fingerprints the file, so visitors' caches
-refresh on their own. To see which release a project has, compare the file's SHA-256
-with [the quality record](docs/QUALITY.md), or check the version string the font
-reports in Font Book (`Version 0.300` is release 0.3). Each release should also be a Git
-tag and a GitHub release with the two font files attached, so other projects can fetch
-them without cloning this repository.
+project to a new release, copy the new `.woff2` or `.ttf` over its old copy, rebuild and
+redeploy. Next.js fingerprints the file, so visitors' caches refresh on their own. To see
+which release a project has, compare the file's SHA-256 with the quality record, or check
+the version string the font reports in Font Book (`Version 0.300` is Lensa Hand 0.3). Each
+release should also be a Git tag and a GitHub release with the font files attached, so
+other projects can fetch them without cloning this repository.
 
-There is one **regular** face. Bold and italic are not separately drawn faces;
-browsers may synthesize them. Keep a fallback font for unsupported characters.
-Start with 20px or larger for extended reading and review on your target screens.
+## Lensa Hand
 
-## Source and design controls
+The shipped typeface predates the template, so it is built from a photographed alphabet
+sheet and a hand-written crop map, `config/alphabet.json`. The photograph stays private in
+`assets/source/` and is excluded from Git, distributions and font bundles; a different sheet
+needs its own crop map, whose coordinates refer to a reference width of 1373 pixels.
 
-`config/alphabet.json` holds each character's crop box, target height and baseline offset,
-plus deliberate aliases for quotes, dashes and nonbreaking space. Its coordinates
-refer to the reference width of 1373 pixels; the original photograph is traced at full
-resolution. A replacement photograph needs a matching manifest.
+```sh
+uv sync --locked
+uv run --locked handfont build --photo assets/source/alphabet.jpg --manifest config/alphabet.json --family "Lensa Hand"
+uv run --locked handfont validate output/LensaHand-Regular.ttf --manifest config/alphabet.json
+```
 
-Spacing is a design control too. An optional top-level `"metrics"` object sets the
-uniform `"sidebearing"` (default 55 font units on each side) and the `"word_space"`
-advance (default 320). Any glyph may override its own `"left"` and `"right"` bearings.
-The builder places each outline exactly on its left bearing, so the metrics table and
-the outline always agree. Pair kerning is not generated.
+Its repertoire is Latin A–Z, a–z, digits and sampled punctuation, with no accented Latin,
+Ethiopic, contextual alternates or cursive joining. The overwritten Q remains visible in
+the source. A font that passes technical checks still needs visual judgment; the quality
+record lists what was inspected. No open-source font license has been assigned on your
+behalf.
 
-The font uses actual sampled letterforms. Target heights are optical adjustments,
-not preservation of the photographed letters' original relative size. The journal
-and note pages serve as visual references; their text is not included in the package.
+## How it works
 
-The current repertoire is Latin A–Z, a–z, digits and sampled punctuation. It does not
-include accented Latin, Ethiopic, full ASCII symbols, contextual alternates or cursive
-joining. The overwritten Q remains visible in the source. A font that passes technical
-checks still needs visual judgment; these limitations are not hidden by validation.
-No open-source font license has been assigned on your behalf.
+OpenCV's ArUco detector locates the four corner markers and a homography straightens the
+page to the template's geometry. On plain paper there are no markers, so the rotation that
+makes the row profile sharpest straightens the photo, long horizontal and vertical runs of
+ink (ruled lines, page edges) are painted out, and marks are grouped into rows and then
+joined left to right until each row holds its expected number of characters. Ink is
+whatever is darker than the locally blurred paper, which tolerates uneven lighting. Potrace fits curves to each character and fontTools
+converts them to TrueType outlines, with every outline placed exactly on its left side
+bearing so the metrics and the outline agree. The writer's x-height, the median of the
+x-height letters, becomes 430 font units; capitals, ascenders and descenders keep their
+real proportions, and small baseline wobble is snapped so letters sit on the line. The
+font gets a `gasp` table for Windows rendering, Adobe Glyph List names, and metrics
+derived from the drawn outlines. Repeated builds are byte-for-byte identical.
 
 ## Quality checks
 
 ```sh
 uv run --locked ruff check src tests scripts
 uv run --locked ruff format --check src tests scripts
-uv run --locked pytest --cov=lensa_hand --cov-report=term-missing
+uv run --locked pytest --cov=handfont --cov-report=term-missing
 uv build --no-sources
 ```
 
-To inspect the specimen in a browser, serve the font directory and open `preview.html`:
+Tests print a template, write on it with a stock font, simulate a phone photograph and
+build a font from it, so CI needs no private handwriting. `tests/test_release.py` also
+checks that `fonts/`, `config/alphabet.json` and the quality record's checksums agree. CI
+runs on Linux, macOS and Windows with pinned action commits, and a separate Linux job
+validates the shipped fonts and runs the FontBakery universal audit, failing on FAIL or
+ERROR. A configured workflow is not evidence that every platform has already run.
 
-```sh
-uv run --locked python -m http.server 8765 --directory fonts
-```
-
-Tests use synthetic handwriting fixtures, so CI does not need your private photographs.
-CI is configured for Linux, macOS and Windows with pinned action commits. A configured
-workflow is not evidence that all three platforms have already run successfully.
-A separate Linux job validates the shipped `fonts/` files against the manifest and
-runs the FontBakery universal audit, failing on FAIL or ERROR and uploading its JSON
-report. `tests/test_release.py` also checks that `fonts/`, `config/alphabet.json` and
-the quality record's checksums agree, so a manifest edit without a rebuild fails tests.
-
-For the independent font audit:
+For the independent audit of any built font:
 
 ```sh
 uv sync --locked --group audit
@@ -129,12 +176,20 @@ uv run --locked --group audit fontbakery check-universal output/LensaHand-Regula
   --skip-network --json output/fontbakery-report.json
 ```
 
-`--skip-network` omits online version and name-collision lookups; structural checks
-still run. Omit that option for an online audit.
+`--skip-network` omits online version and name-collision lookups; structural checks still
+run. Inspect warnings instead of suppressing them wholesale: some checks assume
+conventional typefaces and flag intentional handwritten features, while failures and tool
+errors must be investigated.
 
-Inspect warnings instead of suppressing them wholesale. Some checks assume conventional
-typefaces and may flag intentional handwritten features. Failures and tool errors must
-be investigated. The font builder also validates coverage, metrics and web-font parity.
+To inspect a specimen in a browser, serve the directory and open `preview.html`:
+
+```sh
+uv run --locked python -m http.server 8765 --directory fonts
+```
+
+Python is pinned to **3.14.7** in `.python-version`. `uv` manages the environment;
+`pyproject.toml` declares dependencies and `uv.lock` pins the complete graph. In a sandbox
+that cannot write the normal uv cache, set `UV_CACHE_DIR` to a writable directory.
 
 ## Updating dependencies
 
@@ -145,7 +200,7 @@ uv run --locked pytest
 uv run --locked ruff check src tests scripts
 ```
 
-Rebuild the font, rerun the independent audit, and inspect the specimen before adopting
+Rebuild the fonts, rerun the independent audit, and inspect the specimen before adopting
 an upgrade. The project uses stable releases, not prereleases. Dependency versions were
 checked against [PyPI](https://pypi.org/) on 2026-09-25; monthly Dependabot checks are
 configured for uv and GitHub Actions.

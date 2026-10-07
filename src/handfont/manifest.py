@@ -1,20 +1,25 @@
-"""Input manifest loading and validation."""
+"""Crop-map ("manifest") loading, validation and serialisation."""
 
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
 DEFAULT_SIDEBEARING = 55
 DEFAULT_WORD_SPACE = 320
+DEFAULT_VERSION = "1.0"
 MAX_SIDEBEARING = 500
+_VERSION = re.compile(r"^(0|[1-9]\d*)\.(\d{1,3})$")
+
+Box = tuple[int, int, int, int]
 
 
 @dataclass(frozen=True)
 class GlyphSpec:
     character: str
-    box: tuple[int, int, int, int]
+    box: Box
     height: int
     bottom: int
     left: int | None = None
@@ -28,12 +33,45 @@ class Manifest:
     aliases: dict[str, str]
     sidebearing: int = DEFAULT_SIDEBEARING
     word_space: int = DEFAULT_WORD_SPACE
+    version: str = DEFAULT_VERSION
 
     def left_bearing(self, spec: GlyphSpec) -> int:
         return self.sidebearing if spec.left is None else spec.left
 
     def right_bearing(self, spec: GlyphSpec) -> int:
         return self.sidebearing if spec.right is None else spec.right
+
+    def revision(self) -> tuple[str, float]:
+        """The name-table version string and ``head.fontRevision`` for this design version."""
+        match = _VERSION.match(self.version)
+        if match is None:
+            raise ValueError(f"Invalid design version {self.version!r}")
+        major, minor = match.groups()
+        return f"Version {major}.{minor.ljust(3, '0')}", float(f"{major}.{minor}")
+
+
+def manifest_to_dict(manifest: Manifest) -> dict:
+    """Serialise a manifest in the JSON layout that :func:`load_manifest` reads."""
+    glyphs = []
+    for spec in manifest.glyphs:
+        item: dict = {
+            "character": spec.character,
+            "box": list(spec.box),
+            "height": spec.height,
+            "bottom": spec.bottom,
+        }
+        if spec.left is not None:
+            item["left"] = spec.left
+        if spec.right is not None:
+            item["right"] = spec.right
+        glyphs.append(item)
+    return {
+        "coordinate_width": manifest.coordinate_width,
+        "version": manifest.version,
+        "metrics": {"sidebearing": manifest.sidebearing, "word_space": manifest.word_space},
+        "glyphs": glyphs,
+        "aliases": dict(manifest.aliases),
+    }
 
 
 def _bearing(item: dict, key: str, label: str) -> int | None:
@@ -59,6 +97,13 @@ def _metrics(data: dict) -> tuple[int, int]:
     if type(word_space) is not int or not 1 <= word_space <= 2000:
         raise ValueError("metrics.word_space must be an integer in 1..2000")
     return sidebearing, word_space
+
+
+def _version(data: dict) -> str:
+    version = data.get("version", DEFAULT_VERSION)
+    if not isinstance(version, str) or _VERSION.match(version) is None:
+        raise ValueError('version must be a string such as "1.0" or "2.15"')
+    return version
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -126,4 +171,6 @@ def load_manifest(path: Path) -> Manifest:
         if alias in seen or alias == " ":
             raise ValueError(f"Alias {alias!r} conflicts with a glyph or space")
     sidebearing, word_space = _metrics(data)
-    return Manifest(coordinate_width, tuple(glyphs), aliases, sidebearing, word_space)
+    return Manifest(
+        coordinate_width, tuple(glyphs), aliases, sidebearing, word_space, _version(data)
+    )

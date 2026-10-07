@@ -1,6 +1,38 @@
-# Lensa Hand 0.3 quality record
+# Quality record
 
 Checked locally on macOS with Python 3.14.7 and the committed uv lockfile on 2026-10-07.
+
+## handfont 0.4: template and plain-paper workflows
+
+- The tool was renamed from `lensa-hand` to `handfont`. It gained a printable template
+  with corner markers, a plain-paper mode for people who do not print, automatic
+  straightening and measurement, HEIC photo support and a review image, as described in
+  the README. The Lensa Hand 0.3 fonts rebuilt with it are byte-identical to the files
+  audited below, so the refactor changed nothing in the shipped typeface.
+- 64 tests pass with 95% statement coverage. The template tests print a page, write the
+  full 94-character set on it with a stock font, simulate a phone photograph (perspective,
+  lower resolution, uneven light, blur, JPEG) and build a font from it; they also cover
+  two-page sets in any order, a missing page, empty cells, ink running out of a cell,
+  duplicate pages, an upside-down photo, a set that writes the curly quotes itself, and
+  photos with no or partial markers. The plain-paper tests write the rows on a tilted
+  sheet lying on a desk, with and without ruled lines, and check that every multi-part
+  character (i, j, %, =, :, ;, !, ?, the double quote) was joined, that ruled lines were
+  removed, that a wrong row length stops the build with a numbered review image, and
+  that photos are routed by their markers.
+- Fonts built from a complete template sheet and from plain paper both pass the
+  FontBakery universal audit with 75 PASS, 0 FAIL, 0 ERROR and 3 WARN (capitals not
+  vertically centred in the em box, no kerning, uneven math-sign widths), all expected
+  for handwriting.
+- The derived crop map rebuilds the identical font through the manual path in both
+  modes, so an automatic build can be refined by hand without losing reproducibility.
+- The template, the synthetic photographs, the straightened sheets, the review images,
+  the tracing sheets and the specimens were inspected visually.
+- An independent review of the first template implementation found one high-severity
+  bug (a custom set containing both a curly and a straight quote failed validation) and
+  too little room under the baseline for descenders; both were fixed, with tests, along
+  with the smaller items it raised.
+
+# Lensa Hand 0.3
 
 ## Changes since 0.2
 
@@ -58,7 +90,7 @@ the intended route for spacing refinement. Stroke weight remains a candidate for
 refinement. These files are technically reusable, not a claim that type design is
 finished. Unsupported characters need a fallback font.
 
-## Rechecking a release
+## Rechecking a Lensa Hand release
 
 Run the README's build, test and audit commands. Inspect the PNG and interactive
 specimen at reading and display sizes. Update `fonts/` only after validating the newly

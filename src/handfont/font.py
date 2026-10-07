@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import re
-from importlib import metadata
 from pathlib import Path
 
 import numpy as np
@@ -28,28 +26,15 @@ from .manifest import Manifest
 GASP_RANGES = {7: 0x02 | 0x08, 0xFFFF: 0x01 | 0x02 | 0x04 | 0x08}
 
 
-def font_version() -> tuple[int, int]:
-    """Major and minor version of the installed package; they become the font revision."""
-    try:
-        raw = metadata.version("lensa-hand")
-    except metadata.PackageNotFoundError:
-        return 0, 0
-    match = re.match(r"(\d+)\.(\d+)", raw)
-    if match is None:
-        return 0, 0
-    major, minor = int(match[1]), int(match[2])
-    if minor > 9:
-        raise ValueError("Font revisions encode one minor digit; raise the major version instead")
-    return major, minor
-
-
 def font_stem(family: str) -> str:
     """Return the ASCII stem used for file and PostScript names, or raise for a bad family."""
     if not family.strip():
         raise ValueError("Font family must not be blank")
     stem = "".join(character for character in family if character.isascii() and character.isalnum())
-    if not stem or len(stem) > 55:
+    if not stem:
         raise ValueError("Font family must contain letters or numbers")
+    if len(stem) > 55:
+        raise ValueError("Font family is too long; keep it under 56 letters and digits")
     return stem
 
 
@@ -123,14 +108,13 @@ def _outline(mask: np.ndarray, height: int, bottom: int, left: int, right: int):
 
 
 def build_font(
-    manifest: Manifest, glyphs: dict[str, np.ndarray], output: Path, family: str = "Lensa Hand"
+    manifest: Manifest, glyphs: dict[str, np.ndarray], output: Path, family: str
 ) -> tuple[Path, Path]:
     stem = font_stem(family)
     output.mkdir(parents=True, exist_ok=True)
     ttf_path = output / f"{stem}-Regular.ttf"
     woff2_path = output / f"{stem}-Regular.woff2"
-    major, minor = font_version()
-    revision = f"{major}.{minor}00"
+    version_name, revision = manifest.revision()
     builder = FontBuilder(1000, isTTF=True)
     glyph_order = [".notdef", "space", *(_glyph_name(spec.character) for spec in manifest.glyphs)]
     builder.setupGlyphOrder(glyph_order)
@@ -167,6 +151,10 @@ def build_font(
     bounds_bottom = min(box[1] for box in bounds)
     ascent = max(1150, bounds_top + 25)
     descent = -max(300, -bounds_bottom + 25)
+    # Windows clipping bounds: at least the outline extent, at most twice it (the
+    # FontBakery sanity rule), and otherwise as generous as the line metrics above.
+    win_ascent = max(bounds_top, min(ascent, 2 * bounds_top))
+    win_descent = max(-bounds_bottom, min(max(350, -bounds_bottom + 25), -2 * bounds_bottom))
     heights = {spec.character: spec.height + spec.bottom for spec in manifest.glyphs}
     builder.setupGlyf(outlines)
     builder.setupHorizontalMetrics(metrics)
@@ -175,10 +163,10 @@ def build_font(
         {
             "familyName": family,
             "styleName": "Regular",
-            "uniqueFontIdentifier": f"{stem}-Regular-{major}.{minor}",
+            "uniqueFontIdentifier": f"{stem}-Regular-{manifest.version}",
             "fullName": f"{family} Regular",
             "psName": f"{stem}-Regular",
-            "version": f"Version {revision}",
+            "version": version_name,
         },
         mac=False,
     )
@@ -187,8 +175,8 @@ def build_font(
         sTypoAscender=ascent,
         sTypoDescender=descent,
         sTypoLineGap=0,
-        usWinAscent=ascent,
-        usWinDescent=max(350, -bounds_bottom + 25),
+        usWinAscent=win_ascent,
+        usWinDescent=win_descent,
         sxHeight=heights.get("x", 430),
         sCapHeight=heights.get("H", 650),
         ySubscriptXSize=650,
@@ -225,7 +213,7 @@ def build_font(
     # Font timestamps use seconds since 1904-01-01. Fix them for repeatable builds.
     builder.font["head"].created = 2082844800
     builder.font["head"].modified = 2082844800
-    builder.font["head"].fontRevision = float(revision)
+    builder.font["head"].fontRevision = revision
     builder.font.recalcTimestamp = False
     builder.save(ttf_path)
     font = TTFont(ttf_path, recalcTimestamp=False)

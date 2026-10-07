@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from lensa_hand.manifest import load_manifest
+from handfont.manifest import load_manifest, manifest_to_dict
 
 BASE = {
     "coordinate_width": 100,
@@ -52,6 +52,10 @@ def patched(path: tuple, value: object) -> dict:
         (("metrics",), {"side_bearing": 1}, "unknown keys"),
         (("metrics",), {"sidebearing": -1}, "metrics.sidebearing"),
         (("metrics",), {"word_space": 0}, "metrics.word_space"),
+        (("version",), "1", "version"),
+        (("version",), 1.0, "version"),
+        (("version",), "1.2345", "version"),
+        (("version",), "01.0", "version"),
     ],
 )
 def test_invalid_manifests_name_the_field(
@@ -79,3 +83,14 @@ def test_metrics_default_and_override_per_glyph(tmp_path: Path) -> None:
     tuned = load_manifest(write(tmp_path, data))
     assert (tuned.sidebearing, tuned.word_space) == (40, 320)
     assert (tuned.left_bearing(tuned.glyphs[0]), tuned.right_bearing(tuned.glyphs[0])) == (40, 12)
+
+
+def test_manifest_round_trips_through_json(tmp_path: Path) -> None:
+    data = patched(("metrics",), {"sidebearing": 40, "word_space": 300})
+    data["version"] = "0.7"
+    data["glyphs"][0]["left"] = 5
+    data["aliases"] = {"b": "a"}
+    first = load_manifest(write(tmp_path, data))
+    again = load_manifest(write(tmp_path, manifest_to_dict(first)))
+    assert again == first
+    assert first.revision() == ("Version 0.700", 0.7)

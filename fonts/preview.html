@@ -21,7 +21,7 @@ small { font: 14px system-ui; color: #70675c; }
 <textarea id="text" spellcheck="false" aria-label="Try your handwriting font">A little bit of my handwriting.
 The quick brown fox jumps over the lazy dog.</textarea>
 <a href="LensaHand-Regular.ttf" download>Download the font (.ttf)</a>
-<section>abcdefghijklmnopqrstuvwxyz<br>ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>0123456789<br>.,!?;:'“”()-&amp;@</section>
-<p><small>This draft uses one shape per character. Natural cursive joins, Ethiopic, and accented letters are not included.</small></p>
+<section>abcdefghijklmnopqrstuvwxyz<br>ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>0123456789<br>.,!?;:&#x27;“”()-&amp;@</section>
+<p><small>One shape per character and no cursive joins. Characters outside the rows above come from your fallback font.</small></p>
 <script>document.querySelector('#size').oninput=e=>{document.querySelector('#text').style.fontSize=e.target.value+'px';document.querySelector('#value').textContent=e.target.value+' px'}</script>
 </html>
