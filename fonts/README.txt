@@ -9,5 +9,6 @@ Characters: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,!?;:
 Also mapped onto written characters: " -> ”, ’ -> ', ‘ -> ', – -> -, — -> -
 Limitations: one shape per character; no cursive joins or kerning.
 Keep a fallback font for anything else.
+License: OFL-1.1; see LICENSE.txt.
 
 Files: LensaHand-Regular.ttf for desktop installation; LensaHand-Regular.woff2 and fonts.css for web use; PNG specimens; HTML tester.

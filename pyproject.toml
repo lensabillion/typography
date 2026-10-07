@@ -7,6 +7,8 @@ name = "handfont"
 version = "0.4.0"
 description = "Turn a photo of your handwriting into an installable font and a web font"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "brotli>=1.2.0,<2",
@@ -29,7 +31,7 @@ audit = ["fontbakery>=1.1.0,<2"]
 packages = ["src/handfont"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "/README.md", "uv.lock", ".python-version"]
+include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "/README.md", "/LICENSE", "uv.lock", ".python-version"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

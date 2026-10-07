@@ -11,6 +11,13 @@ DEFAULT_SIDEBEARING = 55
 DEFAULT_WORD_SPACE = 320
 DEFAULT_VERSION = "1.0"
 MAX_SIDEBEARING = 500
+FONT_LICENSES = {
+    "OFL-1.1": (
+        "This Font Software is licensed under the SIL Open Font License, Version 1.1."
+        " This license is available with a FAQ at: https://openfontlicense.org",
+        "https://openfontlicense.org",
+    ),
+}
 _VERSION = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d{0,2})$")
 
 Box = tuple[int, int, int, int]
@@ -34,6 +41,8 @@ class Manifest:
     sidebearing: int = DEFAULT_SIDEBEARING
     word_space: int = DEFAULT_WORD_SPACE
     version: str = DEFAULT_VERSION
+    copyright: str | None = None
+    license: str | None = None
 
     def left_bearing(self, spec: GlyphSpec) -> int:
         return self.sidebearing if spec.left is None else spec.left
@@ -65,13 +74,15 @@ def manifest_to_dict(manifest: Manifest) -> dict:
         if spec.right is not None:
             item["right"] = spec.right
         glyphs.append(item)
-    return {
-        "coordinate_width": manifest.coordinate_width,
-        "version": manifest.version,
-        "metrics": {"sidebearing": manifest.sidebearing, "word_space": manifest.word_space},
-        "glyphs": glyphs,
-        "aliases": dict(manifest.aliases),
-    }
+    data: dict = {"coordinate_width": manifest.coordinate_width, "version": manifest.version}
+    if manifest.copyright is not None:
+        data["copyright"] = manifest.copyright
+    if manifest.license is not None:
+        data["license"] = manifest.license
+    data["metrics"] = {"sidebearing": manifest.sidebearing, "word_space": manifest.word_space}
+    data["glyphs"] = glyphs
+    data["aliases"] = dict(manifest.aliases)
+    return data
 
 
 def _bearing(item: dict, key: str, label: str) -> int | None:
@@ -107,6 +118,18 @@ def _version(data: dict) -> str:
             ' such as "1.0" or "2.15"'
         )
     return version
+
+
+def check_license(copyright: str | None, license: str | None) -> tuple[str | None, str | None]:
+    """Validate a copyright notice and a font license identifier; a license needs a holder."""
+    if copyright is not None and (not isinstance(copyright, str) or not copyright.strip()):
+        raise ValueError("copyright must be a non-empty string such as 'Copyright 2026 Ada'")
+    if license is not None:
+        if license not in FONT_LICENSES:
+            raise ValueError(f"license must be one of: {', '.join(sorted(FONT_LICENSES))}")
+        if copyright is None:
+            raise ValueError("A license needs a copyright holder; add a copyright notice")
+    return copyright, license
 
 
 def load_manifest(path: Path) -> Manifest:
@@ -174,6 +197,14 @@ def load_manifest(path: Path) -> Manifest:
         if alias in seen or alias == " ":
             raise ValueError(f"Alias {alias!r} conflicts with a glyph or space")
     sidebearing, word_space = _metrics(data)
+    copyright, license = check_license(data.get("copyright"), data.get("license"))
     return Manifest(
-        coordinate_width, tuple(glyphs), aliases, sidebearing, word_space, _version(data)
+        coordinate_width,
+        tuple(glyphs),
+        aliases,
+        sidebearing,
+        word_space,
+        _version(data),
+        copyright,
+        license,
     )

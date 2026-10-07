@@ -10,6 +10,7 @@ from zipfile import ZipFile
 
 import numpy as np
 import pytest
+from fontTools.ttLib import TTFont
 
 from handfont.bundle import (
     install_skill,
@@ -206,3 +207,45 @@ def test_linux_install_refreshes_the_font_cache(
     monkeypatch.delenv("XDG_DATA_HOME", raising=False)
     destination = install_font(ttf, system="Linux", home=tmp_path / "home")
     assert calls == [["fc-cache", "-f", str(destination.parent)]]
+
+
+def test_licensed_build_writes_the_notice_everywhere(
+    specimen: tuple[Path, Path], tmp_path: Path
+) -> None:
+    image, manifest = specimen
+    result = build_project(
+        image,
+        manifest,
+        tmp_path / "out",
+        "Lensa Hand",
+        copyright="Copyright 2026 Ada",
+        license="OFL-1.1",
+    )
+    assert result.license == tmp_path / "out" / "LICENSE.txt"
+    notice = result.license.read_text(encoding="utf-8")
+    assert notice.startswith('Copyright 2026 Ada, with Reserved Font Name "Lensa Hand".\n')
+    assert "SIL OPEN FONT LICENSE Version 1.1" in notice
+    with TTFont(result.ttf) as font:
+        names = font["name"]
+        assert names.getDebugName(0) == "Copyright 2026 Ada"
+        assert "SIL Open Font License, Version 1.1" in names.getDebugName(13)
+        assert names.getDebugName(14) == "https://openfontlicense.org"
+    package = json.loads((result.package / "package.json").read_text(encoding="utf-8"))
+    assert package["license"] == "OFL-1.1" and "LICENSE.txt" in package["files"]
+    assert (result.package / "LICENSE.txt").read_text(encoding="utf-8") == notice
+    assert "OFL-1.1" in (result.package / "README.md").read_text(encoding="utf-8")
+    assert "License: OFL-1.1" in result.readme.read_text(encoding="utf-8")
+    with ZipFile(result.archive) as archive:
+        assert "LICENSE.txt" in archive.namelist() and "package/LICENSE.txt" in archive.namelist()
+    with pytest.raises(ValueError, match="copyright holder"):
+        build_project(image, manifest, tmp_path / "bad", "Lensa Hand", license="OFL-1.1")
+
+
+def test_unlicensed_build_says_so(specimen: tuple[Path, Path], tmp_path: Path) -> None:
+    image, manifest = specimen
+    result = build_project(image, manifest, tmp_path / "out", "Lensa Hand")
+    assert result.license is None
+    assert not (result.package / "LICENSE.txt").exists()
+    assert "none chosen yet" in result.readme.read_text(encoding="utf-8")
+    with TTFont(result.ttf) as font:
+        assert font["name"].getDebugName(13) is None

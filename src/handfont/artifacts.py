@@ -6,6 +6,7 @@ import hashlib
 import json
 from collections.abc import Sequence
 from html import escape
+from importlib import resources
 from pathlib import Path
 from statistics import median
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
@@ -160,6 +161,18 @@ def write_css(woff2: Path, output: Path, family: str) -> Path:
     return path
 
 
+def write_license(output: Path, family: str, copyright: str, license: str) -> Path:
+    """Write the font license with its copyright header; the family name is reserved."""
+    text = (
+        resources.files("handfont")
+        .joinpath("templates", f"{license}.txt")
+        .read_text(encoding="utf-8")
+    )
+    path = output / "LICENSE.txt"
+    path.write_text(f'{copyright}, with Reserved Font Name "{family}".\n\n{text}', encoding="utf-8")
+    return path
+
+
 def write_readme(
     output: Path,
     family: str,
@@ -168,10 +181,16 @@ def write_readme(
     characters: str,
     aliases: dict[str, str],
     skipped: Sequence[str] = (),
+    license: str | None = None,
 ) -> Path:
     missing = f"Not written on the sheet: {' '.join(skipped)}\n" if skipped else ""
     mapped = ", ".join(f"{alias} -> {source}" for alias, source in aliases.items() if source != " ")
     mapped = f"Also mapped onto written characters: {mapped}\n" if mapped else ""
+    terms = (
+        f"License: {license}; see LICENSE.txt.\n"
+        if license
+        else "License: none chosen yet; the author decides how the font may be shared.\n"
+    )
     path = output / "README.txt"
     path.write_text(
         f"{family} — handwriting font\n\n"
@@ -181,7 +200,8 @@ def write_readme(
         f"Characters: {characters}\n"
         f"{missing}{mapped}"
         "Limitations: one shape per character; no cursive joins or kerning.\n"
-        "Keep a fallback font for anything else.\n\n"
+        "Keep a fallback font for anything else.\n"
+        f"{terms}\n"
         f"Files: {ttf.name} for desktop installation; {woff2.name} and fonts.css for web use; "
         "PNG specimens; HTML tester.\n",
         encoding="utf-8",
