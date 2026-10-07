@@ -222,11 +222,13 @@ def write_build_info(
     return path
 
 
-def write_archive(files: list[Path], output: Path, stem: str) -> Path:
+def write_archive(files: list[Path | tuple[str, Path]], output: Path, stem: str) -> Path:
+    """Zip the deliverables; a ``(name, path)`` entry stores the file under that name."""
+    entries = [(item.name, item) if isinstance(item, Path) else item for item in files]
     archive = output / f"{stem}-Draft.zip"
     with ZipFile(archive, "w", compression=ZIP_DEFLATED, compresslevel=9) as bundle:
-        for path in sorted(files, key=lambda item: item.name):
-            info = ZipInfo(path.name, date_time=(2020, 1, 1, 0, 0, 0))
+        for name, path in sorted(entries, key=lambda entry: entry[0]):
+            info = ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
             info.compress_type = ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             bundle.writestr(info, path.read_bytes(), compress_type=ZIP_DEFLATED, compresslevel=9)

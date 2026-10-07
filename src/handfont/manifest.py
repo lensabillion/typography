@@ -11,7 +11,7 @@ DEFAULT_SIDEBEARING = 55
 DEFAULT_WORD_SPACE = 320
 DEFAULT_VERSION = "1.0"
 MAX_SIDEBEARING = 500
-_VERSION = re.compile(r"^(0|[1-9]\d*)\.(\d{1,3})$")
+_VERSION = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d{0,2})$")
 
 Box = tuple[int, int, int, int]
 
@@ -102,7 +102,10 @@ def _metrics(data: dict) -> tuple[int, int]:
 def _version(data: dict) -> str:
     version = data.get("version", DEFAULT_VERSION)
     if not isinstance(version, str) or _VERSION.match(version) is None:
-        raise ValueError('version must be a string such as "1.0" or "2.15"')
+        raise ValueError(
+            'version must be "major.minor" with minor from 0 to 999 and no leading zeros,'
+            ' such as "1.0" or "2.15"'
+        )
     return version
 
 

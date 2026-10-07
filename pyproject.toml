@@ -29,7 +29,7 @@ audit = ["fontbakery>=1.1.0,<2"]
 packages = ["src/handfont"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "README.md", "uv.lock", ".python-version"]
+include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "/README.md", "uv.lock", ".python-version"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

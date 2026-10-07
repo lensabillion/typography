@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import argparse
+import platform
 import sys
 from importlib import metadata
 from pathlib import Path
 
+from .bundle import install_skill, skill_text
+from .install import WINDOWS_FONT_KEY, install_font
 from .pipeline import build_from_photos, build_project, validate_font
 from .template import DEFAULT_CHARACTERS, Layout, write_template
 
@@ -65,6 +68,18 @@ def main(argv: list[str] | None = None) -> int:
     check = commands.add_parser("validate", help="check a built TrueType or WOFF2 font")
     check.add_argument("font", type=Path)
     check.add_argument("--manifest", type=Path, default=None)
+    install = commands.add_parser("install", help="install a built TTF for your desktop apps")
+    install.add_argument("font", type=Path)
+    skill = commands.add_parser(
+        "skill", help="print the skill that lets an AI coding agent run handfont for you"
+    )
+    skill.add_argument(
+        "--install",
+        type=Path,
+        default=None,
+        metavar="PROJECT",
+        help="write it to PROJECT/.claude/skills/handfont/SKILL.md instead of printing it",
+    )
     args = parser.parse_args(argv)
     try:
         if args.command == "template":
@@ -111,6 +126,25 @@ def main(argv: list[str] | None = None) -> int:
             if result.sheet is not None:
                 print(f"Straightened sheet and crop map: {result.sheet}, {result.manifest}")
                 print("Edit the crop map and rebuild with --manifest to refine individual letters.")
+            print(f"npm package for websites and apps: {result.package} (see its SKILL.md)")
+            print(f"Desktop install: handfont install {result.ttf}")
+        elif args.command == "install":
+            destination = install_font(args.font)
+            print(f"Installed {destination}")
+            if platform.system() == "Windows":
+                print(
+                    "Restart applications to see the font. To uninstall, delete the file and"
+                    f" its value under HKEY_CURRENT_USER\\{WINDOWS_FONT_KEY}."
+                )
+            else:
+                print("Restart applications to see the font. Remove the file to uninstall it.")
+        elif args.command == "skill":
+            if args.install is None:
+                print(skill_text(), end="")
+            else:
+                path = install_skill(args.install)
+                print(f"Skill written: {path}")
+                print("Agents in that project can now be asked to make a handwriting font.")
         else:
             result = validate_font(args.font, args.manifest)
             print(f"Valid font: {result['characters']} characters, {result['glyphs']} glyphs")

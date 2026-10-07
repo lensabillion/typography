@@ -13,7 +13,7 @@ Install [uv](https://docs.astral.sh/uv/getting-started/installation/). Then, wit
 cloning anything:
 
 ```sh
-uvx --from git+https://github.com/lensabillion/typography handfont template
+uvx --from git+https://github.com/lensabillion/typography@v0.4.0 handfont template
 ```
 
 That writes `template/template.pdf`, one A4 page that also fits US Letter, plus a PNG
@@ -22,7 +22,7 @@ letters on the long tick and let small letters reach the short tick. Photograph 
 sheet flat, in even light, with all four corner squares in view. Then:
 
 ```sh
-uvx --from git+https://github.com/lensabillion/typography handfont build --photo IMG_0001.jpg --family "Ada Hand"
+uvx --from git+https://github.com/lensabillion/typography@v0.4.0 handfont build --photo IMG_0001.jpg --family "Ada Hand"
 ```
 
 `output/` now holds `AdaHand-Regular.ttf` for desktop installation, `AdaHand-Regular.woff2`
@@ -75,48 +75,57 @@ and pass every photo with `--photo`, in any order: the corner markers identify t
 
 ## Use the font in your projects
 
-For desktop apps, open the `.ttf` and install it with your operating system's font
-manager, then choose the family in your application.
+Every build also writes `output/package/`, a complete npm package: the WOFF2 and TTF, an
+`index.css` with the `@font-face` rule, a small JS entry, a README, and a `SKILL.md` that
+tells an AI coding agent how to apply the font. Copy that folder into a project (for
+example `fonts/her-hand/`) or publish it with `npm publish`, then:
 
-For a website, copy the `.woff2` into your public font directory:
-
-```css
-@font-face {
-  font-family: "Lensa Hand";
-  src: url("/fonts/LensaHand-Regular.woff2") format("woff2");
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-}
-
-body {
-  font-family: "Lensa Hand", system-ui, sans-serif;
-  font-size: 1.25rem;
-  line-height: 1.65;
-}
-
-code, pre, kbd, samp {
-  font-family: ui-monospace, monospace;
-}
+```sh
+npm install ./fonts/her-hand        # or: npm install her-hand, once published
 ```
 
-Next.js projects can use `next/font/local` to self-host and preload the file. This
-repository's `integrations/personal-website` checkout exercises that integration; it is a
-separate Git repository and is excluded from this project's packages.
+```js
+import "her-hand/index.css";        // once, in the root layout or entry file
+```
+
+```css
+body { font-family: "Her Hand", system-ui, sans-serif; }
+```
+
+That works in Vite, Next.js, Astro, SvelteKit and plain bundled sites. The package's
+`SKILL.md` has the exact steps for Next.js with `next/font/local`, Tailwind, plain HTML
+without a bundler, React Native, Flutter and desktop apps. For desktop apps right away:
+
+```sh
+handfont install output/HerHand-Regular.ttf
+```
+
+copies the TTF into your user font folder on macOS, Windows or Linux.
 
 Every font has one **regular** face. Bold and italic are not separately drawn; browsers
 may synthesize them. Keep a fallback font for unsupported characters, and start at 20px or
 larger for extended reading.
 
+### Let an AI coding agent do it
+
+`handfont skill --install .` writes a skill into a project's `.claude/skills/handfont/`.
+From then on, asking the agent to "make a font from this photo of my handwriting and use
+it on the site" is enough: it runs the build, checks the review image, reports skipped or
+clipped characters, wires the package in, and keeps the photograph out of Git. Agents that
+do not read Claude Code skills can be pointed at the same file from `AGENTS.md`. Each
+generated package also carries an `AGENTS.md` block to paste into the consuming project,
+so later sessions know the font exists and how to use it.
+
 ### Updating a project that already uses the font
 
-Projects keep their own copy of the font file; nothing updates automatically. To move a
-project to a new release, copy the new `.woff2` or `.ttf` over its old copy, rebuild and
-redeploy. Next.js fingerprints the file, so visitors' caches refresh on their own. To see
-which release a project has, compare the file's SHA-256 with the quality record, or check
-the version string the font reports in Font Book (`Version 0.300` is Lensa Hand 0.3). Each
-release should also be a Git tag and a GitHub release with the font files attached, so
-other projects can fetch them without cloning this repository.
+Projects keep their own copy of the font; nothing updates automatically. Rebuild, copy the
+new `package/` over the old one (or publish a new version) and reinstall. The package
+version follows the manifest's `version`, so `npm` sees it as an update. To tell which
+release a project has, compare the font's checksum with the quality record or the version
+string the font reports in Font Book. Each
+release is a Git tag named after the package version (`v0.4.0`); the `uvx` commands in
+this README and in the agent skill pin that tag, so tag every release before announcing it,
+and attach the font files to a GitHub release for projects that are not npm-based.
 
 ## Lensa Hand
 
@@ -130,6 +139,9 @@ uv sync --locked
 uv run --locked handfont build --photo assets/source/alphabet.jpg --manifest config/alphabet.json --family "Lensa Hand"
 uv run --locked handfont validate output/LensaHand-Regular.ttf --manifest config/alphabet.json
 ```
+
+`fonts/package/` is the ready-made `lensa-hand` npm package; `npm install ./fonts/package`
+from a project inside this repository, or copy the folder anywhere.
 
 Its repertoire is Latin A–Z, a–z, digits and sampled punctuation, with no accented Latin,
 Ethiopic, contextual alternates or cursive joining. The overwritten Q remains visible in

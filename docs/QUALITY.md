@@ -27,6 +27,20 @@ Checked locally on macOS with Python 3.14.7 and the committed uv lockfile on 202
   modes, so an automatic build can be refined by hand without losing reproducibility.
 - The template, the synthetic photographs, the straightened sheets, the review images,
   the tracing sheets and the specimens were inspected visually.
+- Every build now also writes an npm package per font with its own skill, `handfont
+  install` places the TTF in the user's font folder, and `handfont skill` prints or installs
+  the agent skill; 79 tests cover these too. The shipped `fonts/package/` was consumed from
+  a scratch Node project (entry, CSS and font files resolve) and from a minimal Next.js 16
+  app, installed both as a packed tarball and as a folder inside the app, where
+  `import "lensa-hand/index.css"` and `next/font/local` both built; a link to a folder
+  outside the project root does not resolve under Turbopack, which the package text now
+  says. Every command in the agent skill was run verbatim through `uvx` from the checkout.
+- A second independent review covered the package, installer and skills. It confirmed the
+  package layout, the framework instructions and the privacy boundaries, and raised nine
+  items that were all addressed: the skills now pin the release tag, a foreign `package/`
+  folder is never deleted, Windows installs register and announce the font, only TTF files
+  are installable, family names that would break CSS or YAML are rejected, design versions
+  reject leading zeros, and the shipped package text is tested against the templates.
 - An independent review of the first template implementation found one high-severity
   bug (a custom set containing both a curly and a straight quote failed validation) and
   too little room under the baseline for descenders; both were fixed, with tests, along

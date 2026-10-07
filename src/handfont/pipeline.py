@@ -21,6 +21,7 @@ from .artifacts import (
     write_tester,
     write_tracing_sheet,
 )
+from .bundle import write_package
 from .capture import Capture, capture_page, detect_page, find_markers, measure, resolution_note
 from .font import build_font, font_stem
 from .freehand import LayoutError, capture_freehand
@@ -41,6 +42,7 @@ class BuildResult:
     build_info: Path
     archive: Path
     manifest: Path
+    package: Path
     glyph_count: int
     mode: str = "manifest"
     skipped: tuple[str, ...] = ()
@@ -193,8 +195,16 @@ def _assemble(
             or desktop["hmtx"].metrics != web["hmtx"].metrics
         ):
             raise ValueError("TTF and WOFF2 character maps or advances disagree")
+    package = write_package(
+        output, family, ttf, woff2, characters, manifest.aliases, manifest.version
+    )
+    packaged = [
+        (str(path.relative_to(output)), path)
+        for path in sorted(package.rglob("*"))
+        if path.is_file()
+    ]
     archive = write_archive(
-        [ttf, woff2, css, preview, tracing_sheet, tester, readme, build_info],
+        [ttf, woff2, css, preview, tracing_sheet, tester, readme, build_info, *packaged],
         output,
         ttf.stem.removesuffix("-Regular"),
     )
@@ -209,6 +219,7 @@ def _assemble(
         build_info,
         archive,
         manifest_path,
+        package,
         len(glyphs),
         mode,
         skipped,

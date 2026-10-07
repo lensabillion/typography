@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from fontTools.ttLib import TTFont
 
+from handfont.bundle import skill_text, write_package
 from handfont.manifest import load_manifest
 from handfont.pipeline import validate_font
 
@@ -63,3 +64,31 @@ def test_shipped_font_version_matches_manifest() -> None:
     with TTFont(TTF) as font:
         assert font["name"].getDebugName(5) == version_name
         assert round(font["head"].fontRevision, 3) == revision
+
+
+def test_committed_skill_matches_the_package() -> None:
+    committed = ROOT / ".claude" / "skills" / "handfont" / "SKILL.md"
+    assert committed.read_text(encoding="utf-8") == skill_text()
+
+
+def test_shipped_package_carries_the_shipped_fonts() -> None:
+    package = FONTS / "package"
+    assert (package / "fonts" / WOFF2.name).read_bytes() == WOFF2.read_bytes()
+    assert (package / "fonts" / TTF.name).read_bytes() == TTF.read_bytes()
+    manifest = json.loads((package / "package.json").read_text(encoding="utf-8"))
+    assert manifest["name"] == "lensa-hand"
+    assert manifest["version"].startswith(load_manifest(MANIFEST).version + ".")
+
+
+def test_shipped_package_text_matches_the_templates(tmp_path: Path) -> None:
+    design = load_manifest(MANIFEST)
+    characters = "".join(spec.character for spec in design.glyphs)
+    fresh = write_package(
+        tmp_path, "Lensa Hand", TTF, WOFF2, characters, design.aliases, design.version
+    )
+    for path in fresh.rglob("*"):
+        if path.is_file() and path.suffix != ".ttf" and path.suffix != ".woff2":
+            shipped = FONTS / "package" / path.relative_to(fresh)
+            assert shipped.read_text(encoding="utf-8") == path.read_text(encoding="utf-8"), (
+                path.name
+            )

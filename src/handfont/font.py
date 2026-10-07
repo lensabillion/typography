@@ -30,6 +30,8 @@ def font_stem(family: str) -> str:
     """Return the ASCII stem used for file and PostScript names, or raise for a bad family."""
     if not family.strip():
         raise ValueError("Font family must not be blank")
+    if any(c in '"\\:#' or ord(c) < 32 for c in family):
+        raise ValueError("Font family must not contain quotes, backslashes, colons or hash signs")
     stem = "".join(character for character in family if character.isascii() and character.isalnum())
     if not stem:
         raise ValueError("Font family must contain letters or numbers")

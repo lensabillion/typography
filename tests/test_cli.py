@@ -47,6 +47,8 @@ def test_blank_family_fails_before_tracing(
     assert main([*args, "--family", "   "]) == 1
     assert "blank" in capsys.readouterr().err
     assert not output.exists()
+    assert main([*args, "--family", 'Ada "Quoted" Hand']) == 1
+    assert "quotes" in capsys.readouterr().err
 
 
 def test_invalid_manifest_fails_without_creating_output(
@@ -114,3 +116,27 @@ def test_characters_do_not_apply_to_manifest_builds(
     args = ["build", "--photo", str(image), "--manifest", str(manifest), "--characters", "oi"]
     assert main([*args, "--family", "Mixed", "--output", str(tmp_path / "out")]) == 1
     assert "--characters applies to" in capsys.readouterr().err
+
+
+def test_install_and_skill_commands(
+    specimen: tuple[Path, Path],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    image, manifest = specimen
+    output = tmp_path / "out"
+    args = ["build", "--photo", str(image), "--manifest", str(manifest), "--family", "Lensa Hand"]
+    assert main([*args, "--output", str(output)]) == 0
+    assert "npm package" in capsys.readouterr().out
+    home = tmp_path / "home"
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setattr("handfont.install.platform.system", lambda: "Darwin")
+    assert main(["install", str(output / "LensaHand-Regular.ttf")]) == 0
+    assert "Installed" in capsys.readouterr().out
+    assert (home / "Library" / "Fonts" / "LensaHand-Regular.ttf").is_file()
+    assert main(["skill"]) == 0
+    assert capsys.readouterr().out.startswith("---\nname: handfont\n")
+    assert main(["skill", "--install", str(tmp_path / "project")]) == 0
+    assert "Skill written" in capsys.readouterr().out
+    assert (tmp_path / "project" / ".claude" / "skills" / "handfont" / "SKILL.md").is_file()

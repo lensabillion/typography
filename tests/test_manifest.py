@@ -56,6 +56,7 @@ def patched(path: tuple, value: object) -> dict:
         (("version",), 1.0, "version"),
         (("version",), "1.2345", "version"),
         (("version",), "01.0", "version"),
+        (("version",), "0.03", "version"),
     ],
 )
 def test_invalid_manifests_name_the_field(
