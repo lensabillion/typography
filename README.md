@@ -146,8 +146,25 @@ from a project inside this repository, or copy the folder anywhere.
 Its repertoire is Latin A–Z, a–z, digits and sampled punctuation, with no accented Latin,
 Ethiopic, contextual alternates or cursive joining. The overwritten Q remains visible in
 the source. A font that passes technical checks still needs visual judgment; the quality
-record lists what was inspected. No open-source font license has been assigned on your
-behalf.
+record lists what was inspected.
+
+## Licenses
+
+The handfont code is released under the [MIT License](LICENSE). Lensa Hand is released
+under the [SIL Open Font License 1.1](fonts/LICENSE.txt) with "Lensa Hand" as a reserved
+font name: anyone may use, embed, bundle and modify it, nobody may sell it by itself, and
+modified versions must take another name. The notice is also written into the font file
+and into `fonts/package`.
+
+To license a font you build, pass a copyright notice and a license and both end up in the
+font's name table, in `LICENSE.txt`, in the ZIP and in the npm package:
+
+```sh
+handfont build --photo photo.jpg --family "Ada Hand" --copyright "Copyright 2026 Ada Lovelace" --license OFL-1.1
+```
+
+Without them the build stays unlicensed and says so; the package carries `UNLICENSED`
+until its author decides.
 
 ## How it works
 

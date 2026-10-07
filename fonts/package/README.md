@@ -27,5 +27,6 @@ them. Body text reads best at 20px or larger.
 
 ## License
 
-No license has been chosen yet (`UNLICENSED` in package.json). Pick one before sharing the
-package with others, for example the SIL Open Font License, and record it here.
+Licensed under the OFL-1.1 license; see LICENSE.txt. The font may be used,
+embedded, bundled and modified freely, but not sold by itself, and modified versions
+may not use its reserved name.

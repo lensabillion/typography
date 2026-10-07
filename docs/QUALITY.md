@@ -46,9 +46,19 @@ Checked locally on macOS with Python 3.14.7 and the committed uv lockfile on 202
   too little room under the baseline for descenders; both were fixed, with tests, along
   with the smaller items it raised.
 
-# Lensa Hand 0.3
+# Lensa Hand 0.4
 
-## Changes since 0.2
+Lensa Hand 0.4 is the 0.3 font with a copyright notice and the SIL Open Font License 1.1
+written into its name table (IDs 0, 13 and 14); outlines, metrics and the character map
+are byte-identical to 0.3, as checked by comparing the compiled `glyf`, `hmtx` and `cmap`
+tables. `fonts/LICENSE.txt` carries the notice with "Lensa Hand" as a reserved font name,
+and `fonts/package` declares `OFL-1.1`. The FontBakery universal audit of 0.4 reports
+76 PASS, 0 FAIL, 0 ERROR and the same two warnings as before. The handfont code itself is
+under the MIT License in `LICENSE`.
+
+## Lensa Hand 0.3
+
+### Changes since 0.2
 
 - Every `hmtx` left side bearing now equals its outline's `xMin`, so rasterizers that
   position glyphs from the metrics table and those that use the outline agree. In 0.2
@@ -65,7 +75,7 @@ Checked locally on macOS with Python 3.14.7 and the committed uv lockfile on 202
   metrics come from the drawn outlines. Both reproduce the 0.2 values.
 - Side bearings and the word space are manifest design controls with unchanged defaults.
 
-## Verification
+### Verification of 0.3
 
 - 39 tests pass with 95% statement coverage; the suite fails below 90%. Fixtures are
   synthetic and contain no private writing. Seven tests check the committed `fonts/`
@@ -88,11 +98,13 @@ Checked locally on macOS with Python 3.14.7 and the committed uv lockfile on 202
   and produced no console errors.
 - Linux and Windows CI is configured, but has not been locally executed.
 
-Audited TTF SHA-256:
-`03b9bea9baee942292e0a4b2d5b1746df806ebedc6bfcef01a18a90edd161156`
+Audited 0.4 TTF SHA-256:
+`d49f1363771c67c54b41755113e1d80f837adb865fe774e542dfec4a5367174c`
 
-Audited WOFF2 SHA-256:
-`54c2eec3e9c77d417851058cef853f87740cd88b303b3afc0f48e2374ec884d1`
+Audited 0.4 WOFF2 SHA-256:
+`ce80dcace29c519449eedc6478bf74f0aa1fb3c9f8d63fc1cb27229a63594520`
+
+The 0.3 files had SHA-256 03b9bea9… (TTF) and 54c2eec3… (WOFF2).
 
 ## Design limitations
 

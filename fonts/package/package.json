@@ -1,8 +1,8 @@
 {
   "name": "lensa-hand",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Lensa Hand, a handwriting font built with handfont",
-  "license": "UNLICENSED",
+  "license": "OFL-1.1",
   "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
@@ -22,7 +22,8 @@
     "index.js",
     "index.d.ts",
     "SKILL.md",
-    "AGENTS.md"
+    "AGENTS.md",
+    "LICENSE.txt"
   ],
   "keywords": [
     "font",

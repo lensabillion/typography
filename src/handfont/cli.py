@@ -10,6 +10,7 @@ from pathlib import Path
 
 from .bundle import install_skill, skill_text
 from .install import WINDOWS_FONT_KEY, install_font
+from .manifest import FONT_LICENSES
 from .pipeline import build_from_photos, build_project, validate_font
 from .template import DEFAULT_CHARACTERS, Layout, write_template
 
@@ -65,6 +66,17 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="the character set the template or rows were written with (default: printable ASCII)",
     )
+    build.add_argument(
+        "--copyright",
+        default=None,
+        help='copyright notice written into the font, such as "Copyright 2026 Ada Lovelace"',
+    )
+    build.add_argument(
+        "--license",
+        default=None,
+        choices=sorted(FONT_LICENSES),
+        help="font license written into the font, the package and LICENSE.txt (needs --copyright)",
+    )
     check = commands.add_parser("validate", help="check a built TrueType or WOFF2 font")
     check.add_argument("font", type=Path)
     check.add_argument("--manifest", type=Path, default=None)
@@ -99,10 +111,24 @@ def main(argv: list[str] | None = None) -> int:
                     raise ValueError(
                         "--characters applies to template or plain-paper photos, not to --manifest builds"
                     )
-                result = build_project(args.photo[0], args.manifest, args.output, args.family)
+                result = build_project(
+                    args.photo[0],
+                    args.manifest,
+                    args.output,
+                    args.family,
+                    copyright=args.copyright,
+                    license=args.license,
+                )
             else:
                 characters = DEFAULT_CHARACTERS if args.characters is None else args.characters
-                result = build_from_photos(args.photo, args.output, args.family, characters)
+                result = build_from_photos(
+                    args.photo,
+                    args.output,
+                    args.family,
+                    characters,
+                    copyright=args.copyright,
+                    license=args.license,
+                )
             source = {"template": "the printed template", "paper": "rows on plain paper"}
             print(
                 f"Built {result.glyph_count} traced glyphs from {source.get(result.mode, 'the crop map')}: {result.ttf}"
@@ -126,6 +152,10 @@ def main(argv: list[str] | None = None) -> int:
             if result.sheet is not None:
                 print(f"Straightened sheet and crop map: {result.sheet}, {result.manifest}")
                 print("Edit the crop map and rebuild with --manifest to refine individual letters.")
+            if result.license is not None:
+                print(f"License: {result.license}")
+            else:
+                print("No license chosen; add --copyright and --license OFL-1.1 to share the font.")
             print(f"npm package for websites and apps: {result.package} (see its SKILL.md)")
             print(f"Desktop install: handfont install {result.ttf}")
         elif args.command == "install":

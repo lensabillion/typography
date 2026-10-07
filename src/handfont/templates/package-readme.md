@@ -26,5 +26,4 @@ them. Body text reads best at 20px or larger.
 
 ## License
 
-No license has been chosen yet (`UNLICENSED` in package.json). Pick one before sharing the
-package with others, for example the SIL Open Font License, and record it here.
+$license

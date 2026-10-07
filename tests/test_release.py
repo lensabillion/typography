@@ -11,7 +11,7 @@ import pytest
 from fontTools.ttLib import TTFont
 
 from handfont.bundle import skill_text, write_package
-from handfont.manifest import load_manifest
+from handfont.manifest import FONT_LICENSES, load_manifest
 from handfont.pipeline import validate_font
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -84,7 +84,15 @@ def test_shipped_package_text_matches_the_templates(tmp_path: Path) -> None:
     design = load_manifest(MANIFEST)
     characters = "".join(spec.character for spec in design.glyphs)
     fresh = write_package(
-        tmp_path, "Lensa Hand", TTF, WOFF2, characters, design.aliases, design.version
+        tmp_path,
+        "Lensa Hand",
+        TTF,
+        WOFF2,
+        characters,
+        design.aliases,
+        design.version,
+        design.license,
+        FONTS / "LICENSE.txt",
     )
     for path in fresh.rglob("*"):
         if path.is_file() and path.suffix != ".ttf" and path.suffix != ".woff2":
@@ -92,3 +100,14 @@ def test_shipped_package_text_matches_the_templates(tmp_path: Path) -> None:
             assert shipped.read_text(encoding="utf-8") == path.read_text(encoding="utf-8"), (
                 path.name
             )
+
+
+def test_shipped_font_is_licensed() -> None:
+    design = load_manifest(MANIFEST)
+    assert design.license == "OFL-1.1" and design.copyright
+    notice = (FONTS / "LICENSE.txt").read_text(encoding="utf-8")
+    assert notice.startswith(f'{design.copyright}, with Reserved Font Name "Lensa Hand".')
+    with TTFont(TTF) as font:
+        assert font["name"].getDebugName(0) == design.copyright
+        assert font["name"].getDebugName(13) == FONT_LICENSES["OFL-1.1"][0]
+    assert (ROOT / "LICENSE").read_text(encoding="utf-8").startswith("MIT License")

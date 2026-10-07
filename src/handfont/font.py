@@ -17,7 +17,7 @@ from fontTools.ttLib import TTFont, newTable
 from fontTools.ttLib.tables.O_S_2f_2 import Panose
 from fontTools.ttLib.tables.ttProgram import Program
 
-from .manifest import Manifest
+from .manifest import FONT_LICENSES, Manifest
 
 # Rendering advice for rasterizers that honour the gasp table (Windows GDI and
 # DirectWrite): grayscale with symmetric smoothing at tiny sizes, grid-fitting
@@ -161,17 +161,21 @@ def build_font(
     builder.setupGlyf(outlines)
     builder.setupHorizontalMetrics(metrics)
     builder.setupHorizontalHeader(ascent=ascent, descent=descent, lineGap=0)
-    builder.setupNameTable(
-        {
-            "familyName": family,
-            "styleName": "Regular",
-            "uniqueFontIdentifier": f"{stem}-Regular-{manifest.version}",
-            "fullName": f"{family} Regular",
-            "psName": f"{stem}-Regular",
-            "version": version_name,
-        },
-        mac=False,
-    )
+    names = {
+        "familyName": family,
+        "styleName": "Regular",
+        "uniqueFontIdentifier": f"{stem}-Regular-{manifest.version}",
+        "fullName": f"{family} Regular",
+        "psName": f"{stem}-Regular",
+        "version": version_name,
+    }
+    if manifest.copyright is not None:
+        names["copyright"] = manifest.copyright
+    if manifest.license is not None:
+        description, url = FONT_LICENSES[manifest.license]
+        names["licenseDescription"] = description
+        names["licenseInfoURL"] = url
+    builder.setupNameTable(names, mac=False)
     builder.setupOS2(
         version=4,
         sTypoAscender=ascent,

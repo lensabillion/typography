@@ -75,6 +75,8 @@ def write_package(
     characters: str,
     aliases: dict[str, str],
     version: str,
+    license: str | None = None,
+    license_file: Path | None = None,
 ) -> Path:
     """Write ``output/package``: fonts, CSS, a JS entry, a README, a skill and an AGENTS block."""
     name = package_name(family)
@@ -114,7 +116,7 @@ def write_package(
         "name": name,
         "version": npm_version(version),
         "description": f"{family}, a handwriting font built with handfont",
-        "license": "UNLICENSED",
+        "license": license or "UNLICENSED",
         "type": "module",
         "main": "index.js",
         "types": "index.d.ts",
@@ -126,13 +128,35 @@ def write_package(
             "./package.json": "./package.json",
         },
         "sideEffects": ["*.css"],
-        "files": ["fonts", "index.css", "index.js", "index.d.ts", "SKILL.md", "AGENTS.md"],
+        "files": [
+            "fonts",
+            "index.css",
+            "index.js",
+            "index.d.ts",
+            "SKILL.md",
+            "AGENTS.md",
+            *(["LICENSE.txt"] if license_file else []),
+        ],
         "keywords": ["font", "handwriting", "handfont", name],
     }
     (root / "package.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
     mapped = ", ".join(f"{alias} -> {source}" for alias, source in aliases.items() if source != " ")
+    if license_file is not None:
+        shutil.copyfile(license_file, root / "LICENSE.txt")
+    if license:
+        terms = (
+            f"Licensed under the {license} license; see LICENSE.txt. The font may be used,\n"
+            "embedded, bundled and modified freely, but not sold by itself, and modified versions\n"
+            "may not use its reserved name."
+        )
+    else:
+        terms = (
+            "No license has been chosen yet (`UNLICENSED` in package.json). Pick one before\n"
+            "sharing the package with others, for example the SIL Open Font License, and record\n"
+            "it here."
+        )
     values = {
         "family": family,
         "name": name,
@@ -141,6 +165,7 @@ def write_package(
         "characters": characters,
         "aliases": f"Also mapped onto written characters: {mapped}.\n" if mapped else "",
         "tag": release_tag(),
+        "license": terms,
     }
     (root / "README.md").write_text(_render("package-readme.md", **values), encoding="utf-8")
     (root / "SKILL.md").write_text(_render("use-font.md", **values), encoding="utf-8")

@@ -141,3 +141,24 @@ def test_install_and_skill_commands(
     assert main(["skill", "--install", str(tmp_path / "project")]) == 0
     assert "Skill written" in capsys.readouterr().out
     assert (tmp_path / "project" / ".claude" / "skills" / "handfont" / "SKILL.md").is_file()
+
+
+def test_license_flags_reach_the_font(
+    specimen: tuple[Path, Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    image, manifest = specimen
+    output = tmp_path / "out"
+    args = ["build", "--photo", str(image), "--manifest", str(manifest), "--family", "Lensa Hand"]
+    assert main([*args, "--output", str(output), "--license", "OFL-1.1"]) == 1
+    assert "copyright holder" in capsys.readouterr().err
+    licensed = [
+        *args,
+        "--output",
+        str(output),
+        "--copyright",
+        "Copyright 2026 Ada",
+        "--license",
+        "OFL-1.1",
+    ]
+    assert main(licensed) == 0
+    assert "License:" in capsys.readouterr().out and (output / "LICENSE.txt").is_file()

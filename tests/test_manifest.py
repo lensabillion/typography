@@ -57,6 +57,9 @@ def patched(path: tuple, value: object) -> dict:
         (("version",), "1.2345", "version"),
         (("version",), "01.0", "version"),
         (("version",), "0.03", "version"),
+        (("license",), "MIT", "license must be one of"),
+        (("license",), "OFL-1.1", "copyright holder"),
+        (("copyright",), "  ", "copyright must be"),
     ],
 )
 def test_invalid_manifests_name_the_field(
@@ -95,3 +98,19 @@ def test_manifest_round_trips_through_json(tmp_path: Path) -> None:
     again = load_manifest(write(tmp_path, manifest_to_dict(first)))
     assert again == first
     assert first.revision() == ("Version 0.700", 0.7)
+
+
+def test_license_round_trips_and_needs_a_holder(tmp_path: Path) -> None:
+    data = copy.deepcopy(BASE)
+    data["copyright"] = "Copyright 2026 Ada"
+    data["license"] = "OFL-1.1"
+    manifest = load_manifest(write(tmp_path, data))
+    assert (manifest.copyright, manifest.license) == ("Copyright 2026 Ada", "OFL-1.1")
+    again = load_manifest(write(tmp_path, manifest_to_dict(manifest)))
+    assert again == manifest
+    assert list(manifest_to_dict(manifest))[:4] == [
+        "coordinate_width",
+        "version",
+        "copyright",
+        "license",
+    ]
