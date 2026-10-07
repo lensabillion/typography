@@ -1,0 +1,9 @@
+# Builds and checksums depend on exact bytes, so text files keep LF on every platform.
+* text=auto eol=lf
+*.ttf binary
+*.woff2 binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary

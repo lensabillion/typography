@@ -131,6 +131,7 @@ def test_install_and_skill_commands(
     assert "npm package" in capsys.readouterr().out
     home = tmp_path / "home"
     monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))  # Path.home() on Windows
     monkeypatch.setattr("handfont.install.platform.system", lambda: "Darwin")
     assert main(["install", str(output / "LensaHand-Regular.ttf")]) == 0
     assert "Installed" in capsys.readouterr().out

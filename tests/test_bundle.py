@@ -58,7 +58,7 @@ def test_package_is_complete_and_private_free(
 ) -> None:
     ttf, woff2, manifest = ring_font
     root = write_package(tmp_path, "Ring Hand", ttf, woff2, "O", manifest.aliases, manifest.version)
-    names = sorted(str(path.relative_to(root)) for path in root.rglob("*") if path.is_file())
+    names = sorted(path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file())
     assert names == [
         "AGENTS.md",
         "README.md",
