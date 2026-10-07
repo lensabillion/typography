@@ -2,23 +2,64 @@
 
 from __future__ import annotations
 
+import re
+from importlib import metadata
 from pathlib import Path
 
 import numpy as np
 import potrace
+from fontTools.agl import UV2AGL
 from fontTools.fontBuilder import FontBuilder
+from fontTools.misc.arrayTools import calcIntBounds
 from fontTools.pens.areaPen import AreaPen
 from fontTools.pens.cu2quPen import Cu2QuPen
 from fontTools.pens.recordingPen import RecordingPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont, newTable
+from fontTools.ttLib.tables.O_S_2f_2 import Panose
 from fontTools.ttLib.tables.ttProgram import Program
 
 from .manifest import Manifest
 
+# Rendering advice for rasterizers that honour the gasp table (Windows GDI and
+# DirectWrite): grayscale with symmetric smoothing at tiny sizes, grid-fitting
+# plus antialiasing everywhere else. Without this table Windows may draw an
+# unhinted TrueType font aliased at some sizes.
+GASP_RANGES = {7: 0x02 | 0x08, 0xFFFF: 0x01 | 0x02 | 0x04 | 0x08}
+
+
+def font_version() -> tuple[int, int]:
+    """Major and minor version of the installed package; they become the font revision."""
+    try:
+        raw = metadata.version("lensa-hand")
+    except metadata.PackageNotFoundError:
+        return 0, 0
+    match = re.match(r"(\d+)\.(\d+)", raw)
+    if match is None:
+        return 0, 0
+    major, minor = int(match[1]), int(match[2])
+    if minor > 9:
+        raise ValueError("Font revisions encode one minor digit; raise the major version instead")
+    return major, minor
+
+
+def font_stem(family: str) -> str:
+    """Return the ASCII stem used for file and PostScript names, or raise for a bad family."""
+    if not family.strip():
+        raise ValueError("Font family must not be blank")
+    stem = "".join(character for character in family if character.isascii() and character.isalnum())
+    if not stem or len(stem) > 55:
+        raise ValueError("Font family must contain letters or numbers")
+    return stem
+
 
 def _glyph_name(character: str) -> str:
-    return f"uni{ord(character):04X}" if ord(character) <= 0xFFFF else f"u{ord(character):06X}"
+    """Adobe Glyph List name when one exists, otherwise the uniXXXX convention."""
+    code = ord(character)
+    name = UV2AGL.get(code)
+    if name is not None:
+        return name
+    return f"uni{code:04X}" if code <= 0xFFFF else f"u{code:06X}"
 
 
 def _notdef_glyph():
@@ -36,8 +77,8 @@ def _notdef_glyph():
     return pen.glyph()
 
 
-def _outline(mask: np.ndarray, height: int, bottom: int):
-    rows, columns = mask.shape
+def _outline(mask: np.ndarray, height: int, bottom: int, left: int, right: int):
+    rows = mask.shape[0]
     scale = height / rows
     pen = TTGlyphPen(None)
     # Potrace follows the pencil edge with cubic curves. FontTools converts those
@@ -47,7 +88,7 @@ def _outline(mask: np.ndarray, height: int, bottom: int):
         raise ValueError("Traced glyph has no contours")
 
     def point(value):
-        return (55 + value.x * scale, (rows - value.y) * scale + bottom)
+        return (value.x * scale, (rows - value.y) * scale + bottom)
 
     recordings: list[tuple[float, RecordingPen]] = []
     for curve in curves:
@@ -73,20 +114,23 @@ def _outline(mask: np.ndarray, height: int, bottom: int):
     reverse = max(recordings, key=lambda pair: abs(pair[0]))[0] > 0
     for _, record in recordings:
         record.replay(Cu2QuPen(pen, max_err=1.0, reverse_direction=reverse))
-    return pen.glyph(), (round(columns * scale + 110), 55)
+    glyph = pen.glyph()
+    x_min, _, x_max, _ = calcIntBounds(glyph.coordinates)
+    # Put the outline's left edge exactly on the left side bearing. The hmtx entry
+    # then equals the glyph's xMin, so every rasterizer positions it the same way.
+    glyph.coordinates.translate((left - x_min, 0))
+    return glyph, (x_max - x_min + left + right, left)
 
 
 def build_font(
     manifest: Manifest, glyphs: dict[str, np.ndarray], output: Path, family: str = "Lensa Hand"
 ) -> tuple[Path, Path]:
-    if not family.strip():
-        raise ValueError("Font family must not be blank")
+    stem = font_stem(family)
     output.mkdir(parents=True, exist_ok=True)
-    stem = "".join(character for character in family if character.isascii() and character.isalnum())
-    if not stem or len(stem) > 55:
-        raise ValueError("Font family must contain letters or numbers")
     ttf_path = output / f"{stem}-Regular.ttf"
     woff2_path = output / f"{stem}-Regular.woff2"
+    major, minor = font_version()
+    revision = f"{major}.{minor}00"
     builder = FontBuilder(1000, isTTF=True)
     glyph_order = [".notdef", "space", *(_glyph_name(spec.character) for spec in manifest.glyphs)]
     builder.setupGlyphOrder(glyph_order)
@@ -100,16 +144,30 @@ def build_font(
     )
     builder.setupCharacterMap(cmap)
     outlines = {".notdef": _notdef_glyph(), "space": TTGlyphPen(None).glyph()}
-    metrics = {".notdef": (450, 50), "space": (320, 0)}
+    metrics = {".notdef": (450, 50), "space": (manifest.word_space, 0)}
     for spec in manifest.glyphs:
         if spec.character not in glyphs:
             raise ValueError(f"Missing traced glyph {spec.character!r}")
         name = _glyph_name(spec.character)
-        outlines[name], metrics[name] = _outline(glyphs[spec.character], spec.height, spec.bottom)
-    bounds_top = max(spec.height + spec.bottom for spec in manifest.glyphs)
-    bounds_bottom = min(spec.bottom for spec in manifest.glyphs)
+        outlines[name], metrics[name] = _outline(
+            glyphs[spec.character],
+            spec.height,
+            spec.bottom,
+            manifest.left_bearing(spec),
+            manifest.right_bearing(spec),
+        )
+    # Vertical metrics come from the drawn outlines, not the requested heights, so
+    # a traced curve that overshoots its box can never be clipped.
+    bounds = [
+        calcIntBounds(glyph.coordinates)
+        for glyph in outlines.values()
+        if glyph.numberOfContours > 0
+    ]
+    bounds_top = max(box[3] for box in bounds)
+    bounds_bottom = min(box[1] for box in bounds)
     ascent = max(1150, bounds_top + 25)
     descent = -max(300, -bounds_bottom + 25)
+    heights = {spec.character: spec.height + spec.bottom for spec in manifest.glyphs}
     builder.setupGlyf(outlines)
     builder.setupHorizontalMetrics(metrics)
     builder.setupHorizontalHeader(ascent=ascent, descent=descent, lineGap=0)
@@ -117,10 +175,10 @@ def build_font(
         {
             "familyName": family,
             "styleName": "Regular",
-            "uniqueFontIdentifier": f"{stem}-Regular-0.2",
+            "uniqueFontIdentifier": f"{stem}-Regular-{major}.{minor}",
             "fullName": f"{family} Regular",
             "psName": f"{stem}-Regular",
-            "version": "Version 0.200",
+            "version": f"Version {revision}",
         },
         mac=False,
     )
@@ -129,10 +187,10 @@ def build_font(
         sTypoAscender=ascent,
         sTypoDescender=descent,
         sTypoLineGap=0,
-        usWinAscent=max(1150, bounds_top + 25),
+        usWinAscent=ascent,
         usWinDescent=max(350, -bounds_bottom + 25),
-        sxHeight=430,
-        sCapHeight=650,
+        sxHeight=heights.get("x", 430),
+        sCapHeight=heights.get("H", 650),
         ySubscriptXSize=650,
         ySubscriptYSize=600,
         ySubscriptXOffset=0,
@@ -143,6 +201,7 @@ def build_font(
         ySuperscriptYOffset=350,
         yStrikeoutSize=50,
         yStrikeoutPosition=250,
+        panose=Panose(bFamilyType=3),  # PANOSE family kind 3: Latin hand written.
         ulCodePageRange1=1,
         ulCodePageRange2=0,
         fsSelection=(1 << 6) | (1 << 7),
@@ -158,11 +217,15 @@ def build_font(
     prep.program.fromBytecode(bytes.fromhex("B8 01 FF 85 B0 04 8D"))
     builder.font["prep"] = prep
     builder.font["maxp"].maxStackElements = 2
+    gasp = newTable("gasp")
+    gasp.version = 1
+    gasp.gaspRange = dict(GASP_RANGES)
+    builder.font["gasp"] = gasp
     builder.setupHead()
     # Font timestamps use seconds since 1904-01-01. Fix them for repeatable builds.
     builder.font["head"].created = 2082844800
     builder.font["head"].modified = 2082844800
-    builder.font["head"].fontRevision = 0.2
+    builder.font["head"].fontRevision = float(revision)
     builder.font.recalcTimestamp = False
     builder.save(ttf_path)
     font = TTFont(ttf_path, recalcTimestamp=False)

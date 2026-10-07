@@ -16,7 +16,7 @@ from .artifacts import (
     write_tester,
     write_tracing_sheet,
 )
-from .font import build_font
+from .font import build_font, font_stem
 from .manifest import load_manifest
 from .tracing import trace_glyphs
 
@@ -41,6 +41,7 @@ def build_project(
     """Trace the photo and produce a font plus review and distribution artifacts."""
     source, manifest_path, output = Path(source), Path(manifest_path), Path(output)
     manifest = load_manifest(manifest_path)
+    font_stem(family)  # Reject an unusable family name before the slow tracing step.
     glyphs = trace_glyphs(source, manifest)
     output.mkdir(parents=True, exist_ok=True)
     ttf, woff2 = build_font(manifest, glyphs, output, family)
@@ -97,6 +98,10 @@ def validate_font(path: Path, manifest_path: Path | None = None) -> dict[str, in
         glyph_names = set(font.getGlyphOrder())
         if any(glyph not in glyph_names for glyph in cmap.values()):
             raise ValueError("Character map points to a missing glyph")
+        glyf, hmtx = font["glyf"], font["hmtx"]
+        drawn = [name for name in glyph_names if getattr(glyf[name], "numberOfContours", 0) > 0]
+        if any(hmtx[name][1] != glyf[name].xMin for name in drawn):
+            raise ValueError("A left side bearing disagrees with its glyph outline")
         if font["head"].unitsPerEm != 1000:
             raise ValueError("Unexpected units per em")
         if (

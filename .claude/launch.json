@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "specimen",
+      "runtimeExecutable": "uv",
+      "runtimeArgs": ["run", "--locked", "python", "-m", "http.server", "8765", "--directory", "fonts"],
+      "port": 8765
+    }
+  ]
+}

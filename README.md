@@ -6,7 +6,7 @@ validates the generated files. It runs locally; photographs are never sent to a 
 
 ## Ready-to-use font
 
-The `fonts/` directory contains the validated 0.2 TTF, WOFF2, CSS and specimen.
+The `fonts/` directory contains the validated 0.3 TTF, WOFF2, CSS and specimen.
 Use those directly without rebuilding. See [the quality record](docs/QUALITY.md)
 for verification results and known design limitations.
 
@@ -71,6 +71,12 @@ plus deliberate aliases for quotes, dashes and nonbreaking space. Its coordinate
 refer to the reference width of 1373 pixels; the original photograph is traced at full
 resolution. A replacement photograph needs a matching manifest.
 
+Spacing is a design control too. An optional top-level `"metrics"` object sets the
+uniform `"sidebearing"` (default 55 font units on each side) and the `"word_space"`
+advance (default 320). Any glyph may override its own `"left"` and `"right"` bearings.
+The builder places each outline exactly on its left bearing, so the metrics table and
+the outline always agree. Pair kerning is not generated.
+
 The font uses actual sampled letterforms. Target heights are optical adjustments,
 not preservation of the photographed letters' original relative size. The journal
 and note pages serve as visual references; their text is not included in the package.
@@ -90,9 +96,19 @@ uv run --locked pytest --cov=lensa_hand --cov-report=term-missing
 uv build --no-sources
 ```
 
+To inspect the specimen in a browser, serve the font directory and open `preview.html`:
+
+```sh
+uv run --locked python -m http.server 8765 --directory fonts
+```
+
 Tests use synthetic handwriting fixtures, so CI does not need your private photographs.
 CI is configured for Linux, macOS and Windows with pinned action commits. A configured
 workflow is not evidence that all three platforms have already run successfully.
+A separate Linux job validates the shipped `fonts/` files against the manifest and
+runs the FontBakery universal audit, failing on FAIL or ERROR and uploading its JSON
+report. `tests/test_release.py` also checks that `fonts/`, `config/alphabet.json` and
+the quality record's checksums agree, so a manifest edit without a rebuild fails tests.
 
 For the independent font audit:
 

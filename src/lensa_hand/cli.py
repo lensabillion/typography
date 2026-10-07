@@ -4,15 +4,24 @@ from __future__ import annotations
 
 import argparse
 import sys
+from importlib import metadata
 from pathlib import Path
 
 from .pipeline import build_project, validate_font
+
+
+def _package_version() -> str:
+    try:
+        return metadata.version("lensa-hand")
+    except metadata.PackageNotFoundError:
+        return "unknown"
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lensa-hand", description="Build and check a handwriting font"
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {_package_version()}")
     commands = parser.add_subparsers(dest="command", required=True)
     build = commands.add_parser("build", help="trace a source image and build distribution files")
     build.add_argument("--source", required=True, type=Path, help="photo of the alphabet specimen")
