@@ -60,6 +60,17 @@ Next.js projects can use `next/font/local` to self-host and preload this file. T
 repository's `integrations/personal-website` checkout exercises that integration.
 That is a separate Git repository and is excluded from the font project's packages.
 
+### Updating a project that already uses the font
+
+Projects keep their own copy of the font file; nothing updates automatically. To move a
+project to a new release, copy the new `fonts/LensaHand-Regular.woff2` (or the TTF) over
+its old copy, rebuild and redeploy. Next.js fingerprints the file, so visitors' caches
+refresh on their own. To see which release a project has, compare the file's SHA-256
+with [the quality record](docs/QUALITY.md), or check the version string the font
+reports in Font Book (`Version 0.300` is release 0.3). Each release should also be a Git
+tag and a GitHub release with the two font files attached, so other projects can fetch
+them without cloning this repository.
+
 There is one **regular** face. Bold and italic are not separately drawn faces;
 browsers may synthesize them. Keep a fallback font for unsupported characters.
 Start with 20px or larger for extended reading and review on your target screens.
