@@ -1,6 +1,6 @@
-"""Compatibility entry point; prefer ``uv run lensa-hand build``."""
+"""Compatibility entry point; prefer ``uv run handfont build``."""
 
-from lensa_hand.cli import main
+from handfont.cli import main
 
 if __name__ == "__main__":
     raise SystemExit(main())

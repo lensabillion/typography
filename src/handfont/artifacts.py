@@ -4,16 +4,31 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from html import escape
 from pathlib import Path
+from statistics import median
 from zipfile import ZIP_DEFLATED, ZipFile, ZipInfo
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+Box = tuple[int, int, int, int]
+
 
 def _label_font(size: int):
     return ImageFont.load_default(size=size)
+
+
+def _rows(characters: str) -> list[str]:
+    """Group a character set into lowercase, uppercase, digit and other rows."""
+    groups = [
+        "".join(c for c in characters if c.islower()),
+        "".join(c for c in characters if c.isupper()),
+        "".join(c for c in characters if c.isdigit()),
+        "".join(c for c in characters if not c.isalnum()),
+    ]
+    return [group for group in groups if group]
 
 
 def write_tracing_sheet(glyphs: dict[str, np.ndarray], output: Path) -> Path:
@@ -31,7 +46,27 @@ def write_tracing_sheet(glyphs: dict[str, np.ndarray], output: Path) -> Path:
     return path
 
 
-def write_preview(ttf: Path, output: Path, family: str) -> Path:
+def write_layout_check(sheet: np.ndarray, labels: list[tuple[str, Box]], output: Path) -> Path:
+    """Draw every detected box with its label on the straightened sheet for review."""
+    image = Image.fromarray(sheet).convert("RGB")
+    draw = ImageDraw.Draw(image)
+    typical = median(y1 - y0 for _, (_, y0, _, y1) in labels) if labels else 40
+    size = max(12, round(typical * 0.45))
+    font = _label_font(size)
+    stroke = max(1, image.width // 900)
+    for text, (x0, y0, x1, y1) in labels:
+        draw.rectangle((x0, y0, x1, y1), outline="#d23b2a", width=stroke)
+        draw.text((x0, max(0, y0 - 2)), text, fill="#d23b2a", font=font, anchor="ls")
+    if image.width > 1800:
+        factor = 1800 / image.width
+        image = image.resize((1800, round(image.height * factor)))
+    path = output / "layout-check.png"
+    image.save(path)
+    return path
+
+
+def write_preview(ttf: Path, output: Path, family: str, characters: str) -> Path:
+    covered = set(characters)
     preview = Image.new("RGB", (1600, 1100), "#fbf7ee")
     draw = ImageDraw.Draw(preview)
     label = _label_font(22)
@@ -46,8 +81,10 @@ def write_preview(ttf: Path, output: Path, family: str) -> Path:
         ("Hello, world! How are you?", 865, 55),
     ]
     for sample, y, size in samples:
-        font = ImageFont.truetype(str(ttf), size)
-        draw.text((85, y), sample, font=font, fill="#33302c")
+        text = "".join(c for c in sample if c == " " or c in covered)
+        if text.strip():
+            font = ImageFont.truetype(str(ttf), size)
+            draw.text((85, y), text, font=font, fill="#33302c")
     draw.text(
         (85, 1030),
         "Original traced letterforms  /  Spacing and joining ready for refinement",
@@ -59,8 +96,21 @@ def write_preview(ttf: Path, output: Path, family: str) -> Path:
     return path
 
 
-def write_tester(ttf: Path, woff2: Path, output: Path, family: str) -> Path:
+def write_tester(
+    ttf: Path,
+    woff2: Path,
+    output: Path,
+    family: str,
+    characters: str,
+    skipped: Sequence[str] = (),
+) -> Path:
     safe_family = escape(family)
+    rows = "<br>".join(escape(row) for row in _rows(characters))
+    missing = (
+        f"<p><small>Not written on the sheet: {escape(' '.join(skipped))}</small></p>"
+        if skipped
+        else ""
+    )
     html = f'''<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -84,8 +134,8 @@ small {{ font: 14px system-ui; color: #70675c; }}
 <textarea id="text" spellcheck="false" aria-label="Try your handwriting font">A little bit of my handwriting.
 The quick brown fox jumps over the lazy dog.</textarea>
 <a href="{ttf.name}" download>Download the font (.ttf)</a>
-<section>abcdefghijklmnopqrstuvwxyz<br>ABCDEFGHIJKLMNOPQRSTUVWXYZ<br>0123456789<br>.,!?;:'“”()-&amp;@</section>
-<p><small>This draft uses one shape per character. Natural cursive joins, Ethiopic, and accented letters are not included.</small></p>
+<section>{rows}</section>
+{missing}<p><small>One shape per character and no cursive joins. Characters outside the rows above come from your fallback font.</small></p>
 <script>document.querySelector('#size').oninput=e=>{{document.querySelector('#text').style.fontSize=e.target.value+'px';document.querySelector('#value').textContent=e.target.value+' px'}}</script>
 </html>
 '''
@@ -110,16 +160,28 @@ def write_css(woff2: Path, output: Path, family: str) -> Path:
     return path
 
 
-def write_readme(output: Path, family: str, ttf: Path, woff2: Path) -> Path:
+def write_readme(
+    output: Path,
+    family: str,
+    ttf: Path,
+    woff2: Path,
+    characters: str,
+    aliases: dict[str, str],
+    skipped: Sequence[str] = (),
+) -> Path:
+    missing = f"Not written on the sheet: {' '.join(skipped)}\n" if skipped else ""
+    mapped = ", ".join(f"{alias} -> {source}" for alias, source in aliases.items() if source != " ")
+    mapped = f"Also mapped onto written characters: {mapped}\n" if mapped else ""
     path = output / "README.txt"
     path.write_text(
-        f"{family} — handwriting font draft\n\n"
+        f"{family} — handwriting font\n\n"
         f"Install {ttf.name} in Font Book or another font manager.\n"
         "Open preview.html in a browser to test the font.\n\n"
-        "The font traces the supplied alphabet photograph. Journal pages informed the visual style.\n"
-        "The original photographs are not included in this package.\n\n"
-        "Supported: sampled Latin letters, numbers, and punctuation, plus common quote/dash aliases.\n"
-        "Limitations: one shape per letter; no contextual cursive joins, Ethiopic, or accented letters.\n\n"
+        "The font traces a photographed handwriting sheet. The photographs are not included.\n\n"
+        f"Characters: {characters}\n"
+        f"{missing}{mapped}"
+        "Limitations: one shape per character; no cursive joins or kerning.\n"
+        "Keep a fallback font for anything else.\n\n"
         f"Files: {ttf.name} for desktop installation; {woff2.name} and fonts.css for web use; "
         "PNG specimens; HTML tester.\n",
         encoding="utf-8",
@@ -128,32 +190,45 @@ def write_readme(output: Path, family: str, ttf: Path, woff2: Path) -> Path:
 
 
 def write_build_info(
-    source: Path, manifest: Path, output: Path, family: str, glyph_count: int
+    sources: Sequence[Path],
+    manifest: Path,
+    output: Path,
+    family: str,
+    glyph_count: int,
+    mode: str,
+    skipped: Sequence[str] = (),
+    clipped: Sequence[str] = (),
 ) -> Path:
     def digest(path: Path) -> str:
         return hashlib.sha256(path.read_bytes()).hexdigest()
 
-    with Image.open(source) as image:
-        dimensions = [image.width, image.height]
+    photos = []
+    for source in sources:
+        with Image.open(source) as image:
+            dimensions = [image.width, image.height]
+        photos.append({"name": source.name, "sha256": digest(source), "dimensions": dimensions})
     info = {
-        "schema_version": 1,
+        "schema_version": 2,
         "family": family,
-        "source_image": source.name,
-        "source_sha256": digest(source),
-        "source_dimensions": dimensions,
+        "mode": mode,
+        "sources": photos,
         "manifest_sha256": digest(manifest),
         "traced_glyphs": glyph_count,
+        "skipped": list(skipped),
+        "clipped": list(clipped),
     }
     path = output / "build-info.json"
     path.write_text(json.dumps(info, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return path
 
 
-def write_archive(files: list[Path], output: Path, stem: str) -> Path:
+def write_archive(files: list[Path | tuple[str, Path]], output: Path, stem: str) -> Path:
+    """Zip the deliverables; a ``(name, path)`` entry stores the file under that name."""
+    entries = [(item.name, item) if isinstance(item, Path) else item for item in files]
     archive = output / f"{stem}-Draft.zip"
     with ZipFile(archive, "w", compression=ZIP_DEFLATED, compresslevel=9) as bundle:
-        for path in sorted(files, key=lambda item: item.name):
-            info = ZipInfo(path.name, date_time=(2020, 1, 1, 0, 0, 0))
+        for name, path in sorted(entries, key=lambda entry: entry[0]):
+            info = ZipInfo(name, date_time=(2020, 1, 1, 0, 0, 0))
             info.compress_type = ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             bundle.writestr(info, path.read_bytes(), compress_type=ZIP_DEFLATED, compresslevel=9)

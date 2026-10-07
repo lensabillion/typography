@@ -1,0 +1,33 @@
+{
+  "name": "lensa-hand",
+  "version": "0.3.0",
+  "description": "Lensa Hand, a handwriting font built with handfont",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "style": "index.css",
+  "exports": {
+    ".": "./index.js",
+    "./index.css": "./index.css",
+    "./fonts/*": "./fonts/*",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "fonts",
+    "index.css",
+    "index.js",
+    "index.d.ts",
+    "SKILL.md",
+    "AGENTS.md"
+  ],
+  "keywords": [
+    "font",
+    "handwriting",
+    "handfont",
+    "lensa-hand"
+  ]
+}

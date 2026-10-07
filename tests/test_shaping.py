@@ -7,8 +7,8 @@ import uharfbuzz as hb
 from fontTools.ttLib import TTFont
 from PIL import Image, ImageDraw, ImageFont
 
-from lensa_hand.font import build_font
-from lensa_hand.manifest import GlyphSpec, Manifest
+from handfont.font import build_font
+from handfont.manifest import GlyphSpec, Manifest
 
 
 def test_counter_survives_font_rasterization_and_harfbuzz(tmp_path: Path) -> None:
@@ -16,7 +16,7 @@ def test_counter_survives_font_rasterization_and_harfbuzz(tmp_path: Path) -> Non
     mask[3:77, 3:57] = 255
     mask[15:65, 15:45] = 0
     manifest = Manifest(60, (GlyphSpec("O", (0, 0, 60, 80), 650, 0),), {})
-    ttf, woff2 = build_font(manifest, {"O": mask}, tmp_path)
+    ttf, woff2 = build_font(manifest, {"O": mask}, tmp_path, "Ring Hand")
     face = hb.Face(ttf.read_bytes())
     font = hb.Font(face)
     buffer = hb.Buffer()

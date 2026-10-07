@@ -3,9 +3,9 @@ requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lensa-hand"
-version = "0.2.0"
-description = "Reproducible handwriting-to-font tools and the Lensa Hand typeface"
+name = "handfont"
+version = "0.4.0"
+description = "Turn a photo of your handwriting into an installable font and a web font"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
@@ -14,25 +14,29 @@ dependencies = [
     "numpy>=2.5.3,<3",
     "opencv-python-headless>=5.0.0.93,<6",
     "pillow>=12.3.0,<13",
+    "pillow-heif>=1.8.0",
     "potracer>=0.0.4,<0.1",
 ]
 
 [project.scripts]
-lensa-hand = "lensa_hand.cli:main"
+handfont = "handfont.cli:main"
 
 [dependency-groups]
 dev = ["pytest>=9.1.1,<10", "pytest-cov>=7.1.0,<8", "ruff>=0.16.9,<0.17", "uharfbuzz>=0.56.2,<0.57"]
 audit = ["fontbakery>=1.1.0,<2"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/lensa_hand"]
+packages = ["src/handfont"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "README.md", "uv.lock", ".python-version"]
+include = ["src/", "tests/", "config/", "scripts/", "pyproject.toml", "/README.md", "uv.lock", ".python-version"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
+
+[tool.coverage.report]
+fail_under = 90
 
 [tool.ruff]
 target-version = "py314"
