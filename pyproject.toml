@@ -24,7 +24,7 @@ dependencies = [
 handfont = "handfont.cli:main"
 
 [dependency-groups]
-dev = ["pytest>=9.1.1,<10", "pytest-cov>=7.1.0,<8", "ruff>=0.16.9,<0.17", "uharfbuzz>=0.56.2,<0.57"]
+dev = ["pytest>=9.1.1,<10", "pytest-cov>=7.1.0,<8", "ruff>=0.16.9,<0.17", "uharfbuzz>=0.56.2,<0.58"]
 audit = ["fontbakery>=1.1.0,<2"]
 
 [tool.hatch.build.targets.wheel]
